@@ -23,7 +23,6 @@ image = cv2.imread(args["image"])
 
 def captch_ex(img):
     img = img
-
     img_final = img.copy()
     img2gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     ret, mask = cv2.threshold(img2gray, 180, 255, cv2.THRESH_BINARY)
@@ -32,13 +31,14 @@ def captch_ex(img):
     '''
             line  8 to 12  : Remove noisy portion 
     '''
-    kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3,
-                                                         3))  # to manipulate the orientation of dilution , large x means horizonatally dilating  more, large y means vertically dilating more
+    # to manipulate the orientation of dilution ,  large x means horizonatally dilating  more,
+    #    large y means vertically dilating more
+    kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
     dilated = cv2.dilate(new_img, kernel, iterations=9)  # dilate , more the iteration more the dilation
 
     # for cv2.x.x
-
-    _, contours, hierarchy = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)  # findContours returns 3 variables for getting contours
+    # findContours returns 3 variables for getting contours
+    _, contours, hierarchy = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
     # for cv3.x.x comment above line and uncomment line below
 
