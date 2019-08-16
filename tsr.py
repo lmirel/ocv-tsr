@@ -109,13 +109,14 @@ c_x = 0
 c_y = 0
 c_r = 0
 cidx = 1
+spdv = 0
 if circles is not None:
   #circles = np.uint16 (np.around (circles))
   for i in circles[0,:]:
     # draw the outer circle
     cv2.circle (frame, (i[0], i[1]), i[2], (0,255,0), 2)
     #
-    cv2.imwrite ("frame.png", frame)
+    #cv2.imwrite ("frame.png", frame)
     
     #if i[2] > c_r:
     c_x = int(i[0])
@@ -132,42 +133,57 @@ if circles is not None:
 # draw the center of the circle
 #cv2.circle (mask,(c_x, c_y),2,(0,0,255),3)
     #crop image
-    uw = int(c_r * 85 / 100)
+    #img range
+    irange = [55, 60, 65, 70, 75, 80, 85]
+    uw = int(c_r * 80 / 100)
     uh = int(c_r * 65 / 100)
-    print ("max circle at {},{}r{} / image size: {}x{}".format(c_x, c_y, c_r, uw*2, uh*2))
-    image = ori_image.copy()
-    image = image[c_y - uh:c_y + uh, c_x - uw:c_x + uw]
-    #mask  = mask[c_y - uh:c_y + uh, c_x - uw:c_x + uw]
-    iname = "image-{}.png".format(cidx)
-    cv2.imwrite (iname, image)
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    #
-    """#
-    #--- performing Otsu threshold ---
-    ret,thresh1 = cv2.threshold (gray, 0, 255,cv2.THRESH_OTSU|cv2.THRESH_BINARY_INV)
-    #--- choosing the right kernel
-    #--- kernel size of 3 rows (to join dots above letters 'i' and 'j')
-    #--- and 10 columns to join neighboring letters in words and neighboring words
-    rect_kernel = cv2.getStructuringElement (cv2.MORPH_RECT, (5, 1))
-    dilation = cv2.dilate (thresh1, rect_kernel, iterations = 1)
-    #---Finding contours ---
-    _, contours, hierarchy = cv2.findContours(dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    im2 = gray.copy()
-    for cnt in contours:
-            x, y, w, h = cv2.boundingRect(cnt)
-            cv2.rectangle(im2, (x, y), (x + w, y + h), (0, 255, 0), 2)
-    iname = "contours-{}.png".format(cidx)
-    cv2.imwrite (iname, im2)
-    """#
-    #gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    #mask_inv = cv2.bitwise_not(mask)
-    #gray = cv2.bitwise_and (gray, gray, mask = mask_inv)
-    iname = "gray-{}.png".format(cidx)
-    cv2.imwrite (iname, gray)
-    #cv2.imwrite ("mask.png", mask)
-    cidx = cidx + 1
-    #use tesserocr
-    print (tesserocr.image_to_text (Image.fromarray(gray)))  # print ocr text from image
+    for irg in irange:
+      uw = int(c_r * irg / 100)
+      #print ("max circle at {},{}r{} / image size: {}x{}".format(c_x, c_y, c_r, uw*2, uh*2))
+      image = ori_image.copy()
+      image = image[c_y - uh:c_y + uh, c_x - uw:c_x + uw]
+      #mask  = mask[c_y - uh:c_y + uh, c_x - uw:c_x + uw]
+      #
+      #iname = "image-{}.png".format(cidx)
+      #cv2.imwrite (iname, image)
+      gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+      #
+      """#
+      #--- performing Otsu threshold ---
+      ret,thresh1 = cv2.threshold (gray, 0, 255,cv2.THRESH_OTSU|cv2.THRESH_BINARY_INV)
+      #--- choosing the right kernel
+      #--- kernel size of 3 rows (to join dots above letters 'i' and 'j')
+      #--- and 10 columns to join neighboring letters in words and neighboring words
+      rect_kernel = cv2.getStructuringElement (cv2.MORPH_RECT, (5, 1))
+      dilation = cv2.dilate (thresh1, rect_kernel, iterations = 1)
+      #---Finding contours ---
+      _, contours, hierarchy = cv2.findContours(dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+      im2 = gray.copy()
+      for cnt in contours:
+              x, y, w, h = cv2.boundingRect(cnt)
+              cv2.rectangle(im2, (x, y), (x + w, y + h), (0, 255, 0), 2)
+      iname = "contours-{}.png".format(cidx)
+      cv2.imwrite (iname, im2)
+      """#
+      #gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+      #mask_inv = cv2.bitwise_not(mask)
+      #gray = cv2.bitwise_and (gray, gray, mask = mask_inv)
+      #
+      #iname = "gray-{}.png".format(cidx)
+      #cv2.imwrite (iname, gray)
+      #cv2.imwrite ("mask.png", mask)
+      #
+      #use tesserocr
+      spd = tesserocr.image_to_text (Image.fromarray (gray)).strip("\n\r")
+      if spd.isnumeric():
+        print ("speed: {}kph on index {}".format(spd, cidx))  # print ocr text from image
+        #exit(0)
+        #
+        if spdv > 0 and spdv == int(spd):
+          break
+        spdv = int(spd)
+      #
+      cidx = cidx + 1
 # show the output images
 # cv2.imshow("Image", image)
 #cv2.imshow("Output", gray)
