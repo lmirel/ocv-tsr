@@ -26,21 +26,14 @@ def hisEqulColor(img):
 
 print ("#i:initializing camera..")
 # initialize the camera and grab a reference to the raw camera capture
+picw = 640
+pich = 480
 camera = PiCamera()
 time.sleep (2) #give camera time to warm up
-camera.resolution = (1280, 720)
-camera.framerate = 32
-camera.rotation = 180
-rawCapture = PiRGBArray(camera, size=(1280, 720))
-
-#stdscr = curses.initscr()
-#curses.cbreak()
-#stdscr.keypad(1)
-
-#stdscr.addstr(0,10,"Hit 'q' to quit")
-#stdscr.refresh()
-
-#key = ''
+camera.resolution = (picw, pich)
+camera.framerate = 30
+#camera.rotation = 180
+rawCapture = PiRGBArray (camera, size=(picw, pich))
 
 if len(sys.argv) == 1:
    hue_value1 = 1
@@ -61,23 +54,8 @@ while not estop:
  
     for frame in camera.capture_continuous (rawCapture, format="bgr", use_video_port=True):
       try:
-        rawCapture.seek(0)
         image = frame.array
-        #mimage = np.fromfile (rawCapture, dtype=np.uint8)
-        #print (image)
-        #snip
-        #create a CLAHE object (Arguments are optional).
-        #clahe = cv2.createCLAHE (clipLimit=2.0, tileGridSize=(8,8))
-        #im1 = np.uint16(image)
-        #cl1 = clahe.apply(im1)
-        ##
-        #m_img = cv2.medianBlur (image,5)
-        #rt, th1 = cv2.threshold (m_img, 180, 255, cv2.THRESH_BINARY)
-        #th2 = cv2.inpaint (m_img, th1, 9, cv2.INPAINT_TELEA)
-        #rv, th2 = cv2.threshold (image, 12, 255, cv2.THRESH_BINARY)
-        #blurred = cv2.GaussianBlur (th2, (11, 11), 0)
-        #hisimg = hisEqulColor (image)
-        #image = hisimg
+        ori_frame = image
         #
         blurred = cv2.GaussianBlur (image, (11, 11), 0)
         hsv = cv2.cvtColor (blurred, cv2.COLOR_BGR2HSV)
@@ -91,10 +69,10 @@ while not estop:
         # join my masks
         cmask = mask0 + mask1
         #
-        #cmask = cv2.inRange (hsv, lower_col, upper_col)
         cmask = cv2.erode (cmask, None, iterations=2)
         cmask = cv2.dilate (cmask, None, iterations=2)
-        #cv2.imwrite ("mask.png", mask)
+        #iname = "./raw/mask-{}.png".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
+        #cv2.imwrite (iname, cmask)
         #detect circles
         circles = cv2.HoughCircles (cmask, cv2.HOUGH_GRADIENT, 1, 60,
                   param1=100, param2=20, minRadius=30, maxRadius=200)
@@ -102,31 +80,33 @@ while not estop:
         c_x = 0
         c_y = 0
         c_r = 0
-        cidx = 1
-        spdv = 0
-        spdf = 0
         if circles is not None:
+          iname = "./raw/image-{}.png".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
+          cv2.imwrite (iname, image)
+          print ("#i:saving frame {}".format (iname))
           #circles = np.uint16 (np.around (circles))
+          """
+          cidx = 1
           for i in circles[0,:]:
+            image = ori_frame.copy()
             # draw the outer circle
             #cv2.circle (image, (i[0], i[1]), i[2], (0,255,0), 2)
             #
-            #cv2.imwrite ("frame.png", frame)
-
-            #if i[2] > c_r:
             #c_x = int(i[0])
             #c_y = int(i[1])
             #c_r = int(i[2])
-            #uw = int(c_r * 80 / 100)
+            #uw = c_r #int(c_r * 80 / 100)
             #uh = int(c_r * 65 / 100)
-            #image = frame
-            #image = image[c_y - uh:c_y + uh, c_x - uw:c_x + uw]
+            #save image section - full height
+            #image = image[0:pich, c_x - uw:c_x + uw]
             #mask  = mask[c_y - uh:c_y + uh, c_x - uw:c_x + uw]
             #
-            #image = cv2.imdecode (frame, 1)
-            iname = "./raw/image-{}.png".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
+            iname = "./raw/image-{}-{}.png".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"), cidx)
             cv2.imwrite (iname, image)
             print ("#i:saving frame {}".format (iname))
+            cidx = cidx + 1
+            #
+          """
         #snip
         #hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         #color_mask = cv2.inRange(hsv, lower_col, upper_col)
