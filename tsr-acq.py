@@ -138,6 +138,6 @@ while not estop:
       except KeyboardInterrupt:
         estop = True
         break
-    time.sleep (1)
+    #time.sleep (1)
 
 #curses.endwin()

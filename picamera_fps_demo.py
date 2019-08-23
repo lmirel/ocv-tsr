@@ -13,6 +13,7 @@ import imutils
 import time
 import cv2
 from datetime import datetime
+from piframesave import PiFrameSave
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
@@ -22,8 +23,8 @@ ap.add_argument("-d", "--display", type=int, default=-1,
   help="Whether or not frames should be displayed")
 args = vars(ap.parse_args())
 
-picW = 1280
-picH = 720
+picW = 640
+picH = 480
 """
 # initialize the camera and stream
 camera = PiCamera()
@@ -78,30 +79,19 @@ camera.close()
 print("[INFO] sampling THREADED frames from `picamera` module...")
 vs = PiVideoStream(resolution=(picW, picH)).start()
 time.sleep(2.0)
+pifs = PiFrameSave()
+pifs.start()
 fps = FPS().start()
 
 frame_list = []
 flsize = 0
 # loop over some frames...this time using the threaded stream
-#while fps._numFrames < args["num_frames"]:
-while True:
+#while True:
+while fps._numFrames < args["num_frames"]:
   # grab the frame from the threaded video stream and resize it
   # to have a maximum width of 400 pixels
   frame = vs.read()
-  frame_list.append (frame.copy())
-  flsize = flsize + 1
-  if flsize == 100:
-    #save frames list, each 100 items
-    for sf in frame_list:
-      iname = "./raw/thd-image-{}.png".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
-      cv2.imwrite (iname, sf)
-      print ("#i:saving frame {}".format (iname))
-    frame_list.clear()
-    flsize = 0
-  #cv2.imwrite (iname, frame)
-  #print (frame)
-  #frame = imutils.resize(frame, width=400)
-  #print ("#i:saving frame")
+  pifs.save (frame.copy ())
 
   # check to see if the frame should be displayed to our screen
   if args["display"] > 0:
@@ -113,6 +103,8 @@ while True:
 
 # stop the timer and display FPS information
 fps.stop()
+print ("#w:dropping {} frames".format(pifs.count()))
+pifs.stop()
 print("[INFO] elasped time: {:.2f}".format(fps.elapsed()))
 print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
 
