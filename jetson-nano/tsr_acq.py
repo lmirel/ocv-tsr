@@ -15,9 +15,10 @@ cv2_save_frame = 0
 picW = 1280
 picH = 720
 
-lFps_sec = 0
-lFps_k = 0
-lFps_M = 0
+lFps_sec = 0 #current second
+lFps_c = 0 #current fps
+lFps_k = 0 #current frames
+lFps_M = 0 #max fps
 
 def hisEqulColor(img):
     ycrcb = cv2.cvtColor (img, cv2.COLOR_BGR2YCR_CB)
@@ -51,13 +52,14 @@ else:
       hue_value1 = (int(a))
       hue_value2 = (int(a))
 
+lower_col1 = np.array ([0,  50,  50])
+upper_col1 = np.array ([10, 255, 255])
+#
+lower_col2 = np.array ([170, 50,  50])
+upper_col2 = np.array ([180, 255, 255])
+
 estop = False
 while not estop:
-    lower_col1 = np.array ([0,  50,  50])
-    upper_col1 = np.array ([10, 255, 255])
-    #
-    lower_col2 = np.array ([170, 50,  50])
-    upper_col2 = np.array ([180, 255, 255])
 
     while not estop:
 #      ret, frame = camera.read()
@@ -118,11 +120,14 @@ while not estop:
         cFps_sec = datetime.now().second
         lFps_k = lFps_k + 1
         if lFps_sec != cFps_sec:
-            lFps_k = 0
-        lFps_sec = cFps_sec
+          lFps_c = lFps_k - 1
+          lFps_k = 0
         if lFps_M < lFps_k:
-            lFps_M = lFps_k
-            print ("#i:max fps {}".format (lFps_M))
+          lFps_M = lFps_k
+        lFps_sec = cFps_sec
+          #print ("#i:max fps {}".format (lFps_M))
+        cfpst = "FPS {}/{}".format(lFps_M, lFps_c)
+        cv2.putText (frame, cfpst, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2, cv2.LINE_AA)
         #
         #print ("#i:saving frame {} sec {} knt {} max {}".format (iname, cFps_sec, lFps_k, lFps_M))
         #

@@ -9,12 +9,13 @@ from jetcam.csi_camera import CSICamera
 from datetime import datetime
 #from msvcrt import getch
 #import curses
-cv2_display = 0
+cv2_display = 1
 cv2_save_frame = 0
 
-lFps_sec = 0
-lFps_k = 0
-lFps_M = 0
+lFps_sec = 0 #current second
+lFps_c = 0 #current fps
+lFps_k = 0 #current frames
+lFps_M = 0 #max fps
 
 def hisEqulColor(img):
     ycrcb = cv2.cvtColor (img, cv2.COLOR_BGR2YCR_CB)
@@ -102,11 +103,14 @@ while not estop:
         cFps_sec = datetime.now().second
         lFps_k = lFps_k + 1
         if lFps_sec != cFps_sec:
-            lFps_k = 0
-        lFps_sec = cFps_sec
+          lFps_c = lFps_k - 1
+          lFps_k = 0
         if lFps_M < lFps_k:
-            lFps_M = lFps_k
-            print ("#i:max fps {}".format (lFps_M))
+          lFps_M = lFps_k
+        lFps_sec = cFps_sec
+          #print ("#i:max fps {}".format (lFps_M))
+        cfpst = "FPS {}/{}".format(lFps_M, lFps_c)
+        cv2.putText (image, cfpst, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2, cv2.LINE_AA)
         #
         #print ("#i:saving frame {} sec {} knt {} max {}".format (iname, cFps_sec, lFps_k, lFps_M))
         #
@@ -117,10 +121,10 @@ while not estop:
             cv2.imshow("Camera Output", image)
             #cv2.imshow("Clahe", cl1)
             #cv2.imshow("Threshold", th2)
-            cv2.imshow("EQC", hisimg)
-            cv2.imshow("HSV", hsv)
-            cv2.imshow("Color Mask", cmask)
-            cv2.imshow("Final Result", result)
+            #cv2.imshow("EQC", hisimg)
+            #cv2.imshow("HSV", hsv)
+            #cv2.imshow("Color Mask", cmask)
+            #cv2.imshow("Final Result", result)
      
             #rawCapture.truncate(0)
     

@@ -66,6 +66,7 @@ while(cap.isOpened()):
           #print ("#i:max fps {}".format (lFps_M))
         cfpst = "FPS {}/{}".format(lFps_M, lFps_c)
         cv2.putText (frame, cfpst, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2, cv2.LINE_AA)
+        #
         cv2.imshow ('frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
