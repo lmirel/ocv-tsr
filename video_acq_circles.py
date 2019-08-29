@@ -2,6 +2,7 @@
 import numpy as np
 import cv2
 from datetime import datetime
+from tsrframeocr import TSRFrameOCR
 
 lFps_sec = 0 #current second
 lFps_c = 0 #current fps
@@ -11,12 +12,6 @@ lFps_M = 0 #max fps
 c_r_min = 10
 c_r_max = 50
 
-# -*- coding: utf-8 -*-
-"""
-@author: Javier Perez
-@email: javier_e_perez21@hotmail.com
-
-"""
 # define range of white color in HSV
 # change it according to your need !
 lower_white = np.array([0,0,0])
@@ -65,6 +60,9 @@ def check_red_circles (image):
         c_y = int(i[1])
         c_r = int(i[2])
         #print("#i:detected circle {}x{}r{}".format(c_x, c_y, c_r))
+        tsr_img = image.copy()
+        tsr_img = tsr_img[c_y - c_r:c_y + c_r, c_x - c_r:c_x + c_r]
+        tsrfocr.save (tsr_img)
         # draw the outer circle
         cv2.circle (image, (c_x, c_y), c_r, (0,0,255), 2)
     #"""
@@ -72,6 +70,9 @@ def check_red_circles (image):
 ESC=27   
 Mm = 0  #max matches
 cFk = 0
+
+tsrfocr = TSRFrameOCR ()
+tsrfocr.start ()
 
 camera = cv2.VideoCapture ('/home/jetson/Work/dataset/GOPR1415s.mp4')
 #camera = cv2.VideoCapture ('/home/jetson/Work/dataset/GP011416s.mp4')

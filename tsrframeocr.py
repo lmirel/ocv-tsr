@@ -2,8 +2,15 @@
 from threading import Thread
 import cv2
 from datetime import datetime
+import tesserocr
+from PIL import Image
 
-class TSRFrameOcr:
+"""
+apt install libleptonica-dev libtesseract-dev tesseract-ocr
+pip3 install tesserocr
+"""
+
+class TSRFrameOCR:
 	def __init__(self, **kwargs):
 		self.stopped = False
 		self.frame_list = []
@@ -24,8 +31,11 @@ class TSRFrameOcr:
 				if fs is not None:
 					# keep looping infinitely until the thread is stopped
 					iname = "./raw/thd-image-{}.png".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
-					#cv2.imwrite (iname, fs)
-					print("#i:process frame {}".format(iname))
+					cv2.imwrite (iname, fs)
+					c_r = int (fs.shape[0] / 2)
+					c_x = c_r
+					c_y = c_r
+					print("#i:process frame {}x{}r{} name {}".format (c_x, c_y, c_r, iname))
 					irange = [55, 60, 65, 70, 75, 80, 85]
 					uw = int(c_r * 80 / 100)
 					uh = int(c_r * 65 / 100)
@@ -35,19 +45,21 @@ class TSRFrameOcr:
 						image = fs.copy()
 						image = image[c_y - uh:c_y + uh, c_x - uw:c_x + uw]
 						#mask  = mask[c_y - uh:c_y + uh, c_x - uw:c_x + uw]
+						#iname = "./raw/thd-image-{}.png".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
+						#cv2.imwrite (iname, image)
 						#
 						#iname = "image-{}.png".format(cidx)
 						#cv2.imwrite (iname, image)
-						gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+						gray = cv2.cvtColor (image, cv2.COLOR_BGR2GRAY)
 						#
 						#use tesserocr
 						spd = tesserocr.image_to_text (Image.fromarray (gray)).strip("\n\r")
-						if spd.isnumeric():
-						  print ("speed: {}kph on index {}".format(spd, cidx))  # print ocr text from image
-						  #exit if we found 2 similar speeds
-						  if self.speed > 0 and self.speed == int (spd):
-							break
-						  self.speed = int (spd)
+						if spd.isnumeric ():
+							print ("speed: {}kph on {}".format (spd, iname))  # print ocr text from image
+						 	#exit if we found 2 similar speeds
+							if self.speed > 0 and self.speed == int (spd):
+								break
+							self.speed = int (spd)
 		# if the thread indicator variable is set, stop the thread
 		#if self.stopped:
 		#	return
