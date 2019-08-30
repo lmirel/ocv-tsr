@@ -62,6 +62,7 @@ def check_red_circles (image):
         #print("#i:detected circle {}x{}r{}".format(c_x, c_y, c_r))
         tsr_img = image.copy()
         tsr_img = tsr_img[c_y - c_r:c_y + c_r, c_x - c_r:c_x + c_r]
+        #send to OCR engine for interpretation
         tsrfocr.save (tsr_img)
         # draw the outer circle
         cv2.circle (image, (c_x, c_y), c_r, (0,0,255), 2)
