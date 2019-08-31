@@ -87,35 +87,46 @@ camera = cv2.VideoCapture ('/home/jetson/Work/dataset/GOPR1415s.mp4')
 #camera = cv2.VideoCapture ('/home/jetson/Work/dataset/GP011416s.mp4')
 
 while True:
-  ret, imgCamColor = camera.read()
-  if ret == False:
-    print ("#e: read from camera error: {}".format(ret))
-    exit(1)
-  #
-  cFk = cFk + 1
-  if imgCamColor is not None:
-    result = imgCamColor
-    check_red_circles (imgCamColor)
-    #fps computation
-    cFps_sec = datetime.now().second
-    lFps_k = lFps_k + 1
-    if lFps_sec != cFps_sec:
-      lFps_c = lFps_k - 1
-      lFps_k = 0
-    if lFps_M < lFps_k:
-      lFps_M = lFps_k
-    lFps_sec = cFps_sec
-    #print ("#i:max fps {}".format (lFps_M))
-    cfpst = "FPS {}/{} f#{}".format(lFps_M, lFps_c, cFk)
-    cv2.putText (result, cfpst, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2, 0)
-        
-    cv2.imshow('result', result)
-  
-    key = cv2.waitKey(1)
-    if key == ESC:
+    try:
+        ret, imgCamColor = camera.read()
+        if ret == False:
+            print ("#e: read from camera error: {}".format(ret))
+            exit(1)
+        #
+        cFk = cFk + 1
+        if imgCamColor is not None:
+            result = imgCamColor
+            check_red_circles (imgCamColor)
+            #fps computation
+            cFps_sec = datetime.now().second
+            lFps_k = lFps_k + 1
+            if lFps_sec != cFps_sec:
+              lFps_c = lFps_k - 1
+              lFps_k = 0
+            if lFps_M < lFps_k:
+              lFps_M = lFps_k
+            lFps_sec = cFps_sec
+            #print ("#i:max fps {}".format (lFps_M))
+            cfpst = "FPS {}/{} f#{}".format(lFps_M, lFps_c, cFk)
+            #print ("perf {}".format(cfpst))
+            """
+            cv2.putText (result, cfpst, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2, 0)
+            #   
+            cv2.imshow('result', result)
+            #
+            key = cv2.waitKey(1)
+            if key == ESC:
+                break
+            """
+            #tsrfocr.update()
+        else:
+            print ("#w:dropping frames {}".format(cFk))
+        #
+    except KeyboardInterrupt:
+        estop = True
         break
-  else:
-    print ("#w:dropping frames {}".format(cFk))
-
+#
+print ("#w:dropping {} frames".format (tsrfocr.count()))
+#
 camera.release()
 cv2.destroyAllWindows()

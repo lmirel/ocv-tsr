@@ -30,7 +30,7 @@ class TSRFrameOCR:
 
 	def update(self):
 		print("#i:start OCR thread")
-		while True:
+		while self.stopped == False:
 			if len(self.frame_list) > 0:
 				fs = self.frame_list.pop (0)
 				if fs is not None:
@@ -47,7 +47,7 @@ class TSRFrameOCR:
 					gray = cv2.cvtColor (fs, cv2.COLOR_BGR2GRAY)
 					iname = "./raw/thd-image-{}-grey.png".format (kTS)
 					ret, gray = cv2.threshold (gray, b_th, 255, 0)
-					cv2.imwrite (iname, gray)
+					#cv2.imwrite (iname, gray)
 					"""
 					#also get the MASK
 					fs = self.frame_list.pop (0)
@@ -78,7 +78,8 @@ class TSRFrameOCR:
 							if self.speed > 0 and self.speed == int (spd):
 								break
 							self.speed = int (spd)
-			time.sleep(0.2)
+			#break
+			time.sleep(0.0001)
 		# if the thread indicator variable is set, stop the thread
 		#if self.stopped:
 		#	return
