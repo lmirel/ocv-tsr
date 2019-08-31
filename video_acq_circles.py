@@ -9,13 +9,13 @@ lFps_c = 0 #current fps
 lFps_k = 0 #current frames
 lFps_M = 0 #max fps
 
-c_r_min = 10
-c_r_max = 50
+c_r_min = 10 #10
+c_r_max = 60 #50
 
 # define range of white color in HSV
-# change it according to your need !
-lower_white = np.array([0,0,0])
-upper_white = np.array([0,0,255])
+sensitivity = 15
+lower_white = np.array([0, 0, 255 - sensitivity])
+upper_white = np.array([255, sensitivity, 255])
 #this is red
 lower_col1 = np.array ([0,  50,  50])
 upper_col1 = np.array ([10, 255, 255])
@@ -60,10 +60,18 @@ def check_red_circles (image):
         c_y = int(i[1])
         c_r = int(i[2])
         #print("#i:detected circle {}x{}r{}".format(c_x, c_y, c_r))
+        #crop the image area containing the circle
         tsr_img = image.copy()
         tsr_img = tsr_img[c_y - c_r:c_y + c_r, c_x - c_r:c_x + c_r]
         #send to OCR engine for interpretation
         tsrfocr.save (tsr_img)
+        """
+        #crop the MASK area containing the circle
+        tsr_img = cmask.copy()
+        tsr_img = tsr_img[c_y - c_r:c_y + c_r, c_x - c_r:c_x + c_r]
+        #send to OCR engine for interpretation
+        tsrfocr.save (tsr_img)
+        """
         # draw the outer circle
         cv2.circle (image, (c_x, c_y), c_r, (0,0,255), 2)
     #"""

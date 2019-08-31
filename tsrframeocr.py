@@ -11,11 +11,15 @@ apt install libleptonica-dev libtesseract-dev tesseract-ocr
 pip3 install tesserocr
 """
 
+b_th = 70 #black_threshold 
+
 class TSRFrameOCR:
 	def __init__(self, **kwargs):
 		self.stopped = False
 		self.frame_list = []
 		self.speed = 0
+		self.kFin = 0
+		self.kFot = 0
 
 	def start(self):
 		# start the thread to read frames from the video stream
@@ -30,15 +34,26 @@ class TSRFrameOCR:
 			if len(self.frame_list) > 0:
 				fs = self.frame_list.pop (0)
 				if fs is not None:
+					self.kFot = self.kFot + 1
+					kTS = "{}_{}".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"), self.kFot)
 					# keep looping infinitely until the thread is stopped
-					iname = "./raw/thd-image-{}.png".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
-					cv2.imwrite (iname, fs)
+					iname = "./raw/thd-image-{}.png".format (kTS)
+					#cv2.imwrite (iname, fs)
 					c_r = int (fs.shape[0] / 2)
 					c_x = c_r
 					c_y = c_r
-					print("#i:process frame {}x{}r{} name {}".format (c_x, c_y, c_r, iname))
+					print("#i:OCRth:process frame {}x{}r{} name {}".format (c_x, c_y, c_r, iname))
 					#turn image gray for OCR
 					gray = cv2.cvtColor (fs, cv2.COLOR_BGR2GRAY)
+					iname = "./raw/thd-image-{}-grey.png".format (kTS)
+					ret, gray = cv2.threshold (gray, b_th, 255, 0)
+					cv2.imwrite (iname, gray)
+					"""
+					#also get the MASK
+					fs = self.frame_list.pop (0)
+					iname = "./raw/thd-image-{}-mask.png".format (kTS)
+					cv2.imwrite (iname, fs)
+					"""
 					#define image segments % width
 					irange = [55, 60, 65, 70, 75, 80, 85]
 					uw = int(c_r * 80 / 100)
@@ -85,3 +100,6 @@ class TSRFrameOCR:
 	def save(self, frm):
 		# return the frame most recently read
 		self.frame_list.append(frm)
+		self.kFin = self.kFin + 1
+		kTS = "{}_{}".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"), self.kFin)
+		print ("#i:OCRth:stored frame {}".format (kTS))  # print ocr text from image
