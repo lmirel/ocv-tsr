@@ -151,7 +151,8 @@ while True:
                 if show_display == True:
                     cv2.putText (result, cfpst, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2, 0)
                 else:
-                    print (cfpst)
+                    if (cFk % 50) == 0:
+                        print (cfpst)
             #   
             if show_display == True:
                 cv2.imshow('result', result)
