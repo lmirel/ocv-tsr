@@ -7,7 +7,7 @@ from datetime import datetime
 from tsrframeocr import TSRFrameOCR
 
 #
-show_display = True
+show_display = False
 #
 show_fps = True
 #
@@ -145,11 +145,13 @@ while True:
             lFps_sec = cFps_sec
             if show_fps == True:
                 #print ("#i:max fps {}".format (lFps_M))
-                cfpst = "FPS {}/{} f#{}".format(lFps_M, lFps_c, cFk)
+                cfpst = "FPS {}/{} f#{} p{}".format(lFps_M, lFps_c, cFk, kFot)
                 #print ("perf {}".format(cfpst))
                 #
                 if show_display == True:
                     cv2.putText (result, cfpst, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2, 0)
+                else:
+                    print (cfpst)
             #   
             if show_display == True:
                 cv2.imshow('result', result)
