@@ -37,13 +37,20 @@ class TSRFrameOCR:
 					self.kFot = self.kFot + 1
 					kTS = "{}_{}".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"), self.kFot)
 					# keep looping infinitely until the thread is stopped
-					iname = "./raw/thd-image-{}.png".format (kTS)
-					#cv2.imwrite (iname, fs)
 					c_r = int (fs.shape[0] / 2)
 					c_x = c_r
 					c_y = c_r
-					print("#i:OCRth:process frame {}x{}r{} name {}".format (c_x, c_y, c_r, iname))
-					gray = fs
+					#print("#i:OCRth:process frame {}x{}r{} name {}".format (c_x, c_y, c_r, iname))
+					spd = tesserocr.image_to_text (Image.fromarray (fs)).strip("\n\r")
+					if spd.isnumeric ():
+						self.speed = int (spd)
+						#
+						iname = "./raw/thd-image-{}.png".format (kTS)
+						cv2.imwrite (iname, fs)
+						print ("speed: {}kph on {}".format (spd, iname))  # print ocr text from image
+					 	#exit if we found 2 similar speeds
+						#if self.speed > 0 and self.speed == int (spd):
+						#	break
 					"""
 					#turn image gray for OCR
 					gray = cv2.cvtColor (fs, cv2.COLOR_BGR2GRAY)
@@ -54,7 +61,6 @@ class TSRFrameOCR:
 					fs = self.frame_list.pop (0)
 					iname = "./raw/thd-image-{}-mask.png".format (kTS)
 					cv2.imwrite (iname, fs)
-					"""
 					#define image segments % width
 					irange = [55, 60, 65, 70, 75, 80, 85]
 					uw = int(c_r * 80 / 100)
@@ -79,6 +85,7 @@ class TSRFrameOCR:
 							if self.speed > 0 and self.speed == int (spd):
 								break
 							self.speed = int (spd)
+					"""
 			#break
 			time.sleep(0.0001)
 		# if the thread indicator variable is set, stop the thread
@@ -103,5 +110,5 @@ class TSRFrameOCR:
 		# return the frame most recently read
 		self.frame_list.append(frm)
 		self.kFin = self.kFin + 1
-		kTS = "{}_{}".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"), self.kFin)
-		print ("#i:OCRth:stored frame {}".format (kTS))  # print ocr text from image
+		#kTS = "{}_{}".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"), self.kFin)
+		#print ("#i:OCRth:stored frame {}".format (kTS))  # print ocr text from image
