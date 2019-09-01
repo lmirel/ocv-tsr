@@ -16,8 +16,8 @@ lFps_c = 0 #current fps
 lFps_k = 0 #current frames
 lFps_M = 0 #max fps
 
-c_r_min = 10 #10
-c_r_max = 60 #50
+c_r_min = 12 #10
+c_r_max = 50 #50
 
 # define range of white color in HSV
 sensitivity = 15
@@ -70,10 +70,9 @@ def check_red_circles (image):
       for i in circles[0,:]:
         c_x = int(i[0])
         c_y = int(i[1])
-        c_r = int(i[2])
+        c_r = int(i[2]) - 4 #autocrop the 'red' circle
         #print("#i:detected circle {}x{}r{}".format(c_x, c_y, c_r))
         if c_x > c_r and c_y > c_r:
-            c_r = int(i[2]) - 4 #'crop' the red part
             #crop the image area containing the circle
             tsr_img = image.copy()
             tsr_img = tsr_img[c_y - c_r:c_y + c_r, c_x - c_r:c_x + c_r]
@@ -91,39 +90,24 @@ def check_red_circles (image):
                 bk = cv2.bitwise_or (bg, bg, mask = mask)
                 # combine foreground+background
                 final = cv2.bitwise_or (fg, bk)
-                """
-                #gray out image
-                gray = cv2.cvtColor (tsr_img, cv2.COLOR_BGR2GRAY)
-                #gray = tsr_img
-                ret, gray = cv2.threshold (gray, b_th, 255, cv2.THRESH_BINARY)
-                wpk = cv2.countNonZero (gray)
-                tpk = tsr_img.shape[0]*tsr_img.shape[1]
-                print ("#i:white pixels {} in {}".format(wpk, tpk))
-                """
-                """
-                #send to OCR engine for interpretation
-                #tsrfocr.save (gray)
-                #crop the MASK area containing the circle
-                tsr_msk = cmask.copy()
-                tsr_msk = tsr_msk[c_y - c_r:c_y + c_r, c_x - c_r:c_x + c_r]
-                #tsr_img.copyTo (tsr_msk, tsr_msk)
-                """
-                #cv2.imwrite (iname, final)
                 gray = cv2.cvtColor (final, cv2.COLOR_BGR2GRAY)
                 #gray = tsr_img
                 ret, gray = cv2.threshold (gray, b_th, 255, cv2.THRESH_BINARY)
                 #cv2.imwrite (iname, gray)
                 wpk = cv2.countNonZero (gray)
-                tpk = tsr_img.shape[0]*tsr_img.shape[1]
+                tpk = gray.shape[0] * gray.shape[1]
                 if wpk > tpk * 70 / 100 and wpk < tpk * 80 / 100:
                     #print ("#i:white pixels {} in {}".format(wpk, tpk))
                     global kFot
                     kFot = kFot + 1
-                    iname = "./raw/thd-image-{}_{}.png".format (kTS, kFot)
+                    #iname = "./raw/ori-image-{}_{}.png".format (kTS, kFot)
+                    #cv2.imwrite (iname, final)
+                    #iname = "./raw/thd-image-{}_{}.png".format (kTS, kFot)
                     #print ("#i:saved {}".format (iname))
                     #cv2.imwrite (iname, gray)
-                    #send to OCR engine for interpretation
-                    tsrfocr.save (tsr_img)
+                    # send to OCR engine for interpretation
+                    tsrfocr.save (gray)
+                    #tsrfocr.save (tsr_img)
                 #iname = "./raw/thd-gray-{}_{}.png".format (kTS, kFot)
         # draw the outer circle
         cv2.circle (image, (c_x, c_y), c_r, (0,0,255), 2)

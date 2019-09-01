@@ -45,7 +45,7 @@ class TSRFrameOCR:
 					if spd.isnumeric ():
 						self.speed = int (spd)
 						#
-						iname = "./raw/thd-image-{}.png".format (kTS)
+						iname = "./raw/spd-image-{}.png".format (kTS)
 						cv2.imwrite (iname, fs)
 						print ("speed: {}kph on {}".format (spd, iname))  # print ocr text from image
 					 	#exit if we found 2 similar speeds
