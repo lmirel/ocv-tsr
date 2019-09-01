@@ -23,6 +23,8 @@ upper_col1 = np.array ([10, 255, 255])
 lower_col2 = np.array ([170, 50,  50])
 upper_col2 = np.array ([180, 255, 255])
 #
+b_th = 70 #black_threshold 
+#
 def check_red_circles (image):
     #blurred = cv2.GaussianBlur (image, (11, 11), 0)
     hsv = cv2.cvtColor (image, cv2.COLOR_BGR2HSV)
@@ -44,8 +46,9 @@ def check_red_circles (image):
     #cv2.imwrite (iname, cmask)
     #detect circles
     #"""
-    circles = cv2.HoughCircles (cmask, cv2.HOUGH_GRADIENT, 1, 60,
-              param1=100, param2=20, minRadius=c_r_min, maxRadius=c_r_max)
+    circles = cv2.HoughCircles (cmask, cv2.HOUGH_GRADIENT, 1, 
+                60, param1=100, param2=20, minRadius=c_r_min, maxRadius=c_r_max)
+    #            60, param1=100, param2=20, minRadius=c_r_min, maxRadius=c_r_max)
     #process circles
     c_x = 0
     c_y = 0
@@ -55,23 +58,59 @@ def check_red_circles (image):
       #cv2.imwrite (iname, image)
       #print ("#i:saving frame {}".format (iname))
       #circles = np.uint16 (np.around (circles))
+      kFot = 0
+      kTS = "{}".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
       for i in circles[0,:]:
+        kFot = kFot + 1
         c_x = int(i[0])
         c_y = int(i[1])
-        c_r = int(i[2])
+        c_r = int(i[2]) - 4
         #print("#i:detected circle {}x{}r{}".format(c_x, c_y, c_r))
         #crop the image area containing the circle
         tsr_img = image.copy()
         tsr_img = tsr_img[c_y - c_r:c_y + c_r, c_x - c_r:c_x + c_r]
-        #send to OCR engine for interpretation
-        tsrfocr.save (tsr_img)
+        #
+        # draw mask
+        mask = np.full ((c_r*2, c_r*2), 0, dtype=np.uint8)  # mask is only
+        cv2.circle (mask, (c_r, c_r), c_r, (255, 255, 255), -1)
+        # get first masked value (foreground)
+        fg = cv2.bitwise_or (tsr_img, tsr_img, mask = mask)
+        # get second masked value (background) mask must be inverted
+        mask = cv2.bitwise_not (mask)
+        bg = np.full (tsr_img.shape, 255, dtype=np.uint8)
+        bk = cv2.bitwise_or (bg, bg, mask = mask)
+        # combine foreground+background
+        final = cv2.bitwise_or (fg, bk)
         """
+        #gray out image
+        gray = cv2.cvtColor (tsr_img, cv2.COLOR_BGR2GRAY)
+        #gray = tsr_img
+        ret, gray = cv2.threshold (gray, b_th, 255, cv2.THRESH_BINARY)
+        wpk = cv2.countNonZero (gray)
+        tpk = tsr_img.shape[0]*tsr_img.shape[1]
+        print ("#i:white pixels {} in {}".format(wpk, tpk))
+        """
+        """
+        #send to OCR engine for interpretation
+        #tsrfocr.save (gray)
         #crop the MASK area containing the circle
-        tsr_img = cmask.copy()
-        tsr_img = tsr_img[c_y - c_r:c_y + c_r, c_x - c_r:c_x + c_r]
-        #send to OCR engine for interpretation
-        tsrfocr.save (tsr_img)
+        tsr_msk = cmask.copy()
+        tsr_msk = tsr_msk[c_y - c_r:c_y + c_r, c_x - c_r:c_x + c_r]
+        #tsr_img.copyTo (tsr_msk, tsr_msk)
         """
+        iname = "./raw/thd-image-{}_{}.png".format (kTS, kFot)
+        cv2.imwrite (iname, final)
+        print ("#i:saved {}".format (iname))
+        #send to OCR engine for interpretation
+        gray = cv2.cvtColor (final, cv2.COLOR_BGR2GRAY)
+        #gray = tsr_img
+        ret, gray = cv2.threshold (gray, b_th, 255, cv2.THRESH_BINARY)
+        cv2.imwrite (iname, gray)
+        wpk = cv2.countNonZero (gray)
+        tpk = tsr_img.shape[0]*tsr_img.shape[1]
+        print ("#i:white pixels {} in {}".format(wpk, tpk))
+        iname = "./raw/thd-gray-{}_{}.png".format (kTS, kFot)
+        #tsrfocr.save (tsr_img)
         # draw the outer circle
         cv2.circle (image, (c_x, c_y), c_r, (0,0,255), 2)
     #"""
@@ -109,7 +148,7 @@ while True:
             #print ("#i:max fps {}".format (lFps_M))
             cfpst = "FPS {}/{} f#{}".format(lFps_M, lFps_c, cFk)
             #print ("perf {}".format(cfpst))
-            """
+            #
             cv2.putText (result, cfpst, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2, 0)
             #   
             cv2.imshow('result', result)
@@ -117,7 +156,7 @@ while True:
             key = cv2.waitKey(1)
             if key == ESC:
                 break
-            """
+            #
             #tsrfocr.update()
         else:
             print ("#w:dropping frames {}".format(cFk))

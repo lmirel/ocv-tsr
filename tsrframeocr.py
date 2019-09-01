@@ -43,12 +43,13 @@ class TSRFrameOCR:
 					c_x = c_r
 					c_y = c_r
 					print("#i:OCRth:process frame {}x{}r{} name {}".format (c_x, c_y, c_r, iname))
+					gray = fs
+					"""
 					#turn image gray for OCR
 					gray = cv2.cvtColor (fs, cv2.COLOR_BGR2GRAY)
 					iname = "./raw/thd-image-{}-grey.png".format (kTS)
 					ret, gray = cv2.threshold (gray, b_th, 255, 0)
 					#cv2.imwrite (iname, gray)
-					"""
 					#also get the MASK
 					fs = self.frame_list.pop (0)
 					iname = "./raw/thd-image-{}-mask.png".format (kTS)
