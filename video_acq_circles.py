@@ -7,7 +7,7 @@ from datetime import datetime
 from tsrframeocr import TSRFrameOCR
 
 #
-show_display = False
+show_display = True
 #
 show_fps = True
 #
@@ -43,10 +43,10 @@ def check_red_circles (image):
     #mask0 = cv2.inRange (hsv, lower_white, upper_white)
     mask0 = cv2.inRange (hsv, lower_col1, upper_col1)
     # upper mask (170-180)
-    #mask1 = cv2.inRange (hsv, lower_col2, upper_col2)
+    mask1 = cv2.inRange (hsv, lower_col2, upper_col2)
     # join my masks
-    #cmask = mask0 + mask1
-    cmask = mask0
+    cmask = mask0 + mask1
+    #cmask = mask0
     #
     #cmask = cv2.erode (cmask, None, iterations=2)
     #cmask = cv2.dilate (cmask, None, iterations=2)
@@ -55,7 +55,7 @@ def check_red_circles (image):
     #detect circles
     #"""
     circles = cv2.HoughCircles (cmask, cv2.HOUGH_GRADIENT, 1, 
-                60, param1=100, param2=20, minRadius=c_r_min, maxRadius=c_r_max)
+                200, param1=100, param2=20, minRadius=c_r_min, maxRadius=c_r_max)
     #            60, param1=100, param2=20, minRadius=c_r_min, maxRadius=c_r_max)
     #process circles
     c_x = 0

@@ -17,9 +17,9 @@ class TSRFrameOCR:
 	def __init__(self, **kwargs):
 		self.stopped = False
 		self.frame_list = []
-		self.speed = 0
-		self.kFin = 0
-		self.kFot = 0
+		self.speed = 0	#current speed value
+		self.kFin = 0		#frames in - counter
+		self.kFot = 0		#frames out - counter
 
 	def start(self):
 		# start the thread to read frames from the video stream
@@ -39,11 +39,17 @@ class TSRFrameOCR:
 					#print("#i:OCRth:process frame {}x{}r{} name {}".format (c_x, c_y, c_r, iname))
 					spd = tesserocr.image_to_text (Image.fromarray (fs)).strip("\n\r")
 					if spd.isnumeric ():
-						self.speed = int (spd)
+						cspeed = int (spd)
+						if (cspeed % 5) == 0:	#speed value should be multiple of 5kph
+							if self.speed == cspeed:
+								#we've validated the same speed twice, let's clear the work list
+								self.kFot = self.kFot + len(self.frame_list)
+								self.frame_list.clear ()
+							self.speed = cspeed
 						#
 						iname = "./raw/spd-image-{}.png".format (kTS)
-						cv2.imwrite (iname, fs)
-						print ("speed: {}kph on {} shape {}".format (spd, iname, fs.shape))  # print ocr text from image
+						#cv2.imwrite (iname, fs)
+						print ("speed: {}kph with {} on {} shape {}".format (self.speed, spd, iname, fs.shape))  # print ocr text from image
 					 	#exit if we found 2 similar speeds
 						#if self.speed > 0 and self.speed == int (spd):
 						#	break
