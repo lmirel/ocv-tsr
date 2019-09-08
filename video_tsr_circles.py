@@ -10,14 +10,18 @@ from tsrframeocr import TSRFrameOCR
 show_display = True
 #
 show_fps = True
+show_fps = True
 #
-lFps_sec = 0 #current second
-lFps_c = 0 #current fps
-lFps_k = 0 #current frames
-lFps_M = 0 #max fps
+lFps_sec = 0  #current second
+lFps_c = 0    #current fps
+lFps_k = 0    #current frames
+lFps_M = 0    #max fps
+lFps_T = 0    #tot
+lFps_rS = 0   #running seconds
+cFk = 0       #frame count
 
-c_r_min = 12 #10
-c_r_max = 50 #50
+c_r_min = 10 #10
+c_r_max = 25 #50
 
 # define range of white color in HSV
 sensitivity = 15
@@ -34,8 +38,8 @@ b_th = 70   #black_threshold
 kFot = 0    #count of saved frames
 #
 def check_red_circles (image):
-    #blurred = cv2.GaussianBlur (image, (11, 11), 0)
-    hsv = cv2.cvtColor (image, cv2.COLOR_BGR2HSV)
+    blurred = cv2.blur (image, (5, 5))
+    hsv = cv2.cvtColor (blurred, cv2.COLOR_BGR2HSV)
     # construct a mask for the color "green", then perform
     # a series of dilations and erosions to remove any small
     # blobs left in the mask
@@ -47,6 +51,7 @@ def check_red_circles (image):
     # join my masks
     cmask = mask0 + mask1
     #cmask = mask0
+    result = image
     #
     #cmask = cv2.erode (cmask, None, iterations=2)
     #cmask = cv2.dilate (cmask, None, iterations=2)
@@ -110,17 +115,17 @@ def check_red_circles (image):
                     #tsrfocr.save (tsr_img)
                 #iname = "./raw/thd-gray-{}_{}.png".format (kTS, kFot)
         # draw the outer circle
-        cv2.circle (image, (c_x, c_y), c_r, (0,0,255), 2)
+        cv2.circle (result, (c_x, c_y), c_r, (0,0,255), 2)
     #"""
+    return result
 #
 ESC=27   
 Mm = 0  #max matches
-cFk = 0
 
 tsrfocr = TSRFrameOCR ()
 tsrfocr.start ()
 
-camera = cv2.VideoCapture ('/home/jetson/Work/dataset/GOPR1415s.mp4')
+camera = cv2.VideoCapture ('/home/jetbot/Work/dataset/GOPR1415s.mp4')
 #camera = cv2.VideoCapture ('/home/jetson/Work/dataset/GP011416s.mp4')
 
 while True:
@@ -133,29 +138,36 @@ while True:
         cFk = cFk + 1
         if imgCamColor is not None:
             result = imgCamColor
-            check_red_circles (imgCamColor)
+            #if cFk % 5 == 0:
+            if cFk > 0:
+              result = check_red_circles (imgCamColor)
             #fps computation
             cFps_sec = datetime.now().second
             lFps_k = lFps_k + 1
             if lFps_sec != cFps_sec:
               lFps_c = lFps_k - 1
               lFps_k = 0
+              lFps_rS = lFps_rS + 1 #increment seconds - we assume we get here every second
             if lFps_M < lFps_k:
               lFps_M = lFps_k
             lFps_sec = cFps_sec
             if show_fps == True:
                 #print ("#i:max fps {}".format (lFps_M))
-                cfpst = "FPS {}/{} f#{} p{}".format(lFps_M, lFps_c, cFk, kFot)
+                if lFps_rS > 0:
+                  aFps = int (cFk / lFps_rS)
+                else:
+                  aFps = 1
+                cfpst = "FPS M{} / A{} / C{} / T{} p{} s{}".format (lFps_M, aFps, lFps_c, cFk, kFot, lFps_rS)
                 #print ("perf {}".format(cfpst))
                 #
                 if show_display == True:
-                    cv2.putText (result, cfpst, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2, 0)
+                    cv2.putText (result, cfpst, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, 0)
                 else:
                     if (cFk % 50) == 0:
                         print (cfpst)
             #   
             if show_display == True:
-                cv2.imshow('result', result)
+                cv2.imshow ('result', result)
                 #
                 key = cv2.waitKey(1)
                 if key == ESC:
@@ -169,6 +181,7 @@ while True:
         estop = True
         break
 #
+tsrfocr.stop()
 print ("#w:dropping {} frames".format (tsrfocr.count()))
 #
 camera.release()
