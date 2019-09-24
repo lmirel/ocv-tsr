@@ -18,7 +18,7 @@ lFPSfnm = 0  #number of frames
 lFps_c = 0 #current fps
 lFps_k = 0 #current frames
 lFps_M = 0 #max fps
-use_display = True
+use_display = False
 # Create a VideoCapture object
 #capture = cv2.VideoCapture(0)
 capture = CSICamera (width=1280, height=720)                                                                                                                                                                                                                                     
@@ -33,12 +33,15 @@ w   = 1280 #int(capture.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH ))
 h   = 720  #int(capture.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT ))
 fps = 60
 # Define the codec and create VideoWriter object.The output is stored in 'outpy.avi' file.
-fourcc = cv2.VideoWriter_fourcc(*'XVID')  # cv2.VideoWriter_fourcc() does not exist
-#video_writer = cv2.VideoWriter("output.avi", fourcc, 30, (w, h))
-video_writer = cv2.VideoWriter("/media/ramdisk/output.avi", fourcc, 30, (w, h))
+#fourcc = cv2.VideoWriter_fourcc(*'XVID')  # cv2.VideoWriter_fourcc() does not exist
+#fourcc = cv2.VideoWriter_fourcc(*'X264')  # cv2.VideoWriter_fourcc() does not exist
+fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # cv2.VideoWriter_fourcc() does not exist
+video_writer = cv2.VideoWriter("output.avi", fourcc, 60, (w, h))
+#video_writer = cv2.VideoWriter("/media/ramdisk/output.avi", fourcc, 30, (w, h))
 # record video
 lFPSbeg = datetime.now()
 while True:
+  try:
     frame = capture.read()
     video_writer.write(frame)
     #
@@ -59,6 +62,9 @@ while True:
         print (cfpst)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
+  except KeyboardInterrupt:
+    break
+#
 capture.release()
 video_writer.release()
 cv2.destroyAllWindows()
