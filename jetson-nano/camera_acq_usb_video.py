@@ -22,8 +22,8 @@ lFps_M = 0 #max fps
 use_display = True
 # Create a VideoCapture object
 #capture = cv2.VideoCapture(0)
-capture = CSICamera (width=1280, height=720)                                                                                                                                                                                                                                     
-#capture = USBCamera (width=1280, height=720, capture_width=1280, capture_height=720, capture_device=3)
+#capture = CSICamera (width=1280, height=720)                                                                                                                                                                                                                                     
+capture = USBCamera (width=1280, height=720, capture_width=1280, capture_height=720, capture_device=3)
 
 # Check if camera opened successfully
 #if (capture.isOpened() == False): 

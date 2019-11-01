@@ -27,9 +27,11 @@ camera = cv2.VideoCapture ('/home/jetson/Work/dataset/GOPR1415s.mp4')
 orb = cv2.ORB_create()
 bf = cv2.BFMatcher (cv2.NORM_HAMMING, crossCheck=True)
 
-imgTrainColor = cv2.imread ('train.png')
+#imgTrainColor = cv2.imread ('train.png')
+imgTrainColor = cv2.imread ('speed-30-de.png')
 imgTrainGray  = cv2.cvtColor (imgTrainColor, cv2.COLOR_BGR2GRAY)
 
+"""
 ### create mask
 #blur and convert to HSV
 blurred = cv2.GaussianBlur (imgTrainColor, (11, 11), 0)
@@ -56,9 +58,26 @@ cmask = cv2.dilate (cmask, None, iterations=2)
 
 #cmask = cv2.imread('train-mask.png')
 #cmask = cv2.cvtColor (cmask, cv2.COLOR_BGR2GRAY)
+
 #
-#kpTrain = orb.detect (imgTrainGray, cmask)
+fw = imgTrainGray.shape[0]
+fr = int (fw /2)
+# draw mask
+mask = np.full (imgTrainGray.shape, 0, dtype=np.uint8)  # mask is only
+cv2.circle (mask, (fr, fr), fr, (255, 255, 255), -1)
+
+# get first masked value (foreground)
+fg = cv2.bitwise_or (imgTrainGray, imgTrainGray, mask = mask)
+# get second masked value (background) mask must be inverted
+mask = cv2.bitwise_not (mask)
+bg = np.full (imgTrainGray.shape, 255, dtype=np.uint8)
+bk = cv2.bitwise_or (bg, bg, mask = mask)
+# combine foreground+background
+final = cv2.bitwise_or (fg, bk)
+"""
 kpTrain = orb.detect (imgTrainGray, None)
+#kpTrain = orb.detect (imgTrainGray, cmask)
+#kpTrain = orb.detect (imgTrainGray, mask)
 kpTrain, desTrain = orb.compute (imgTrainGray, kpTrain)
 
 firsttime=True
@@ -80,7 +99,7 @@ while True:
     if Mm < cm:
       Mm = cm
 
-    if firsttime==True:
+    if firsttime == True:
         h1, w1 = imgCamColor.shape[:2]
         h2, w2 = imgTrainColor.shape[:2]
         nWidth = w1 + w2

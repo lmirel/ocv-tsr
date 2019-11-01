@@ -35,34 +35,33 @@ class TSRFrameOCR:
 				fs = self.frame_list.pop (0)
 				if fs is not None:
 					self.kFot = self.kFot + 1
-					kTS = "{}_{}".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"), self.kFot)
+					#kTS = "{}_{}".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"), self.kFot)
 					#print("#i:OCRth:process frame {}x{}r{} name {}".format (c_x, c_y, c_r, iname))
 					spd = tesserocr.image_to_text (Image.fromarray (fs)).strip("\n\r")
 					if spd.isnumeric ():
 						cspeed = int (spd)
 						if (cspeed % 5) == 0:	#speed value should be multiple of 5kph
-							if self.speed == cspeed:
-								#we've validated the same speed twice, let's clear the work list
+							#clear list if we found 2 similar speeds
+							if self.speed == cspeed: #did we just validate the same speed?
+								#let's clear the work list
 								self.kFot = self.kFot + len(self.frame_list)
 								self.frame_list.clear ()
+							#new speed is current speed
 							self.speed = cspeed
 						#
-						iname = "./raw/spd-image-{}.png".format (kTS)
+						#iname = "./raw/spd-image-{}.png".format (kTS)
 						#cv2.imwrite (iname, fs)
 						print ("speed: {}kph with {} on {} shape {}".format (self.speed, spd, iname, fs.shape))  # print ocr text from image
-					 	#exit if we found 2 similar speeds
-						#if self.speed > 0 and self.speed == int (spd):
-						#	break
 			#break
 			time.sleep(0.0001)
 		# if the thread indicator variable is set, stop the thread
 		#if self.stopped:
 		#	return
-		print("#i:end save thread")
+		print("#i:end OCR thread")
 
 	def stop(self):
 		# indicate that the thread should be stopped
-		print("#i:stop save thread")
+		print("#i:stop OCR thread")
 		self.stopped = True
 
 	def count(self):

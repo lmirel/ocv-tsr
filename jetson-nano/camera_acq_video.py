@@ -23,6 +23,7 @@ lFPSfnm = 0  #number of frames
 lFps_c = 0 #current fps
 lFps_k = 0 #current frames
 lFps_M = 0 #max fps
+
 use_display = True
 # Create a VideoCapture object
 #capture = cv2.VideoCapture (0)
