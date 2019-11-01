@@ -7,6 +7,11 @@ from jetcam.csi_camera import CSICamera
 # sudo mount -t tmpfs -o size=2048M tmpfs /media/ramdisk
 #/etc/fstab none /media/ramdisk tmpfs nodev,nosuid,noexec,nodiratime,size=2048M 0 0
 # https://www.techrepublic.com/article/how-to-use-a-ramdisk-on-linux/
+#
+# gst-launch-1.0 nvarguscamerasrc num-buffers=200 ! 'video/x-raw(memory:NVMM),width=1920, height=1080, framerate=30/1, format=NV12' ! omxh264enc ! qtmux ! filesink location=test.mp4 -e
+# v4l2-ctl -d /dev/video0 -w --verbose --set-fmt-video=width=1920,height=1080,pixelformat=BA10 --stream-mmap --stream-count=1 --set-ctrl bypass_mode=0 --stream-to=/tmp/stream.raw
+# v4l2-ctl -d /dev/video0 --set-ctrl bypass_mode=0 --stream-mmap --stream-count=10
+#
 
 #FPS computation
 from datetime import datetime
@@ -18,9 +23,9 @@ lFPSfnm = 0  #number of frames
 lFps_c = 0 #current fps
 lFps_k = 0 #current frames
 lFps_M = 0 #max fps
-use_display = False
+use_display = True
 # Create a VideoCapture object
-#capture = cv2.VideoCapture(0)
+#capture = cv2.VideoCapture (0)
 capture = CSICamera (width=1280, height=720)                                                                                                                                                                                                                                     
 
 # Check if camera opened successfully
@@ -32,11 +37,12 @@ capture = CSICamera (width=1280, height=720)
 w   = 1280 #int(capture.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH ))
 h   = 720  #int(capture.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT ))
 fps = 60
+vname = "/mnt/cv2video-{}p-{}.avi".format (h, datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
 # Define the codec and create VideoWriter object.The output is stored in 'outpy.avi' file.
 #fourcc = cv2.VideoWriter_fourcc(*'XVID')  # cv2.VideoWriter_fourcc() does not exist
 #fourcc = cv2.VideoWriter_fourcc(*'X264')  # cv2.VideoWriter_fourcc() does not exist
 fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # cv2.VideoWriter_fourcc() does not exist
-video_writer = cv2.VideoWriter("output.avi", fourcc, 30, (w, h))
+video_writer = cv2.VideoWriter (vname, fourcc, 30, (w, h))
 #video_writer = cv2.VideoWriter("/media/ramdisk/output.avi", fourcc, 30, (w, h))
 # record video
 lFPSbeg = datetime.now()
