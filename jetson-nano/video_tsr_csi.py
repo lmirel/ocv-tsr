@@ -98,7 +98,17 @@ def write_to_7seg (val):
     ser.write (st.encode ())
 #
 def check_red_circles (image):
-    blurred = cv2.blur (image, (5, 5))
+    kTS = "{}".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
+    #crop the image area containing the circle
+    sub_img = image.copy()
+    #1280x720
+    c_ry = 180
+    c_yy = c_ry
+    c_rx = 180
+    c_xx = 640
+    sub_img = sub_img[c_yy - c_ry:c_yy + c_ry, c_xx - c_rx:c_xx + c_rx]
+    # process subimage
+    blurred = cv2.blur (sub_img, (5, 5))
     hsv = cv2.cvtColor (blurred, cv2.COLOR_BGR2HSV)
     # construct a mask for the color "green", then perform
     # a series of dilations and erosions to remove any small
@@ -111,14 +121,13 @@ def check_red_circles (image):
     # join my masks
     cmask = mask0 + mask1
     #cmask = mask1
-    result = image
     #
+    result = sub_img
     #cmask = cv2.erode (cmask, None, iterations=2)
     #cmask = cv2.dilate (cmask, None, iterations=2)
     #iname = "./raw/mask-{}.png".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
     #cv2.imwrite (iname, cmask)
     #detect circles
-    #"""
     circles = cv2.HoughCircles (cmask, cv2.HOUGH_GRADIENT, 1, 
                 200, param1=100, param2=20, minRadius=c_r_min, maxRadius=c_r_max)
     #            60, param1=100, param2=20, minRadius=c_r_min, maxRadius=c_r_max)
@@ -135,72 +144,38 @@ def check_red_circles (image):
         c_y = int(i[1])
         c_r = int(i[2]) #autocrop the 'red' circle
         #print("#i:detected circle {}x{}r{}".format(c_x, c_y, c_r))
-        #print ("#i:saving frame {}".format (iname))
-        #cv2.imwrite (iname, image)
         if c_r > 6 and c_x > c_r and c_y > c_r:
-            #crop the image area containing the circle
-            tsr_img = image.copy()
+            tsr_img = sub_img.copy()
             tsr_img = tsr_img[c_y - c_r:c_y + c_r, c_x - c_r:c_x + c_r]
             #
             global kFot
             kFot = kFot + 1
             #cv2.imwrite (iname, final)
             #iname = "./raw/thd-image-{}_{}.png".format (kTS, kFot)
-            #print ("#i:saved {}".format (iname))
-            #cv2.imwrite (iname, gray)
-            # send to OCR engine for interpretation
             tsr_imga = cv2.cvtColor (tsr_img, cv2.COLOR_BGR2RGBA)
             cuda_mem = jetson.utils.cudaFromNumpy (tsr_imga)
             #print (cuda_mem)
             class_idx, confidence = net.Classify (cuda_mem, tsr_img.shape[0], tsr_img.shape[1])
             if class_idx >= 0: # or confidence * 100) > 60:
                 confi = int (confidence * 1000)
-                if confi > 899:
-                    if confi > 995:
-                        #kph020
-                        #kph030
-                        #kph050
-                        #kph060
-                        #kph070
-                        #kph080
-                        #kph100
-                        #kph120
-                        global cs_spd
-                        if class_idx == 0:#kph20
-                            cs_spd = 20
-                        if class_idx == 1:#kph30
-                            cs_spd = 30
-                        if class_idx == 2:#kph50
-                            cs_spd = 50
-                        if class_idx == 3:#kph60
-                            cs_spd = 60
-                        if class_idx == 4:#kph70
-                            cs_spd = 70
-                        if class_idx == 5:#kph80
-                            cs_spd = 80
-                        if class_idx == 6:#kph100
-                            cs_spd = 100
-                        if class_idx == 7:#kph120
-                            cs_spd = 120
-                        global cs_sec
-                        cs_sec = datetime.now().second
-                    # find the object description
-                    class_desc = net.GetClassDesc (class_idx)
+                # find the object description
+                class_desc = net.GetClassDesc (class_idx)
+                # overlay the result on the image
+                if confi > 990:
+                    print ("found sign {} {:s}".format (confi, class_desc))
+                    #print ("found sign {} {:s} fps {}".format (confi, class_desc, net.GetNetworkFPS ()))
                     # save as image
                     iname = "/mnt/raw/img-{}_{}-cuda-{}_{}.jpg".format (kTS, kFot, class_desc, confi)
                     #jetson.utils.saveImageRGBA (iname, cuda_mem, tsr_img.shape[0], tsr_img.shape[1])
-                    # overlay the result on the image
-                    print ("found sign {} {:s} - net {} fps {}".format (confi, class_desc, net.GetNetworkName (), net.GetNetworkFPS ()))
                     #iname = "/mnt/raw/img-{}_{:.0f}_{}-gray.png".format (kTS, pwp, kFot)
                     #cv2.imwrite (iname, gray)
                     iname = "/mnt/raw/img-{}_{}-ori.jpg".format (kTS, kFot)
                     #cv2.imwrite (iname, tsr_img)
                     iname = "/mnt/raw/img-{}_{}-frame.jpg".format (kTS, kFot)
-                    #cv2.imwrite (iname, image)
-                    #iname = "./raw/thd-gray-{}_{}.png".format (kTS, kFot)
-        # draw the outer circle
+                    #cv2.imwrite (iname, sub_img)
+        #
         cv2.circle (result, (c_x, c_y), c_r, (0,0,255), 2)
-    #"""
+    #return tsr_img
     return result
 #
 ESC=27   
@@ -271,7 +246,7 @@ while True:
             if show_display == True:
                 cv2.imshow ('result', result)
                 #
-                key = cv2.waitKey(1)
+                key = cv2.waitKey (1)
                 if key == ESC:
                     break
             #
