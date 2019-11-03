@@ -160,21 +160,42 @@ def check_red_circles (image):
                 confi = int (confidence * 1000)
                 # find the object description
                 class_desc = net.GetClassDesc (class_idx)
+                # save images
+                iname = "/mnt/raw/img-{}_{}-cuda-{}_{}.jpg".format (kTS, kFot, class_desc, confi)
+                jetson.utils.saveImageRGBA (iname, cuda_mem, tsr_img.shape[0], tsr_img.shape[1])
+                iname = "/mnt/raw/img-{}_{}-ori.jpg".format (kTS, kFot)
+                cv2.imwrite (iname, tsr_img)
+                iname = "/mnt/raw/img-{}_{}-frame.jpg".format (kTS, kFot)
+                cv2.imwrite (iname, sub_img)
                 # overlay the result on the image
                 if confi > 990:
                     print ("found sign {} {:s}".format (confi, class_desc))
                     #print ("found sign {} {:s} fps {}".format (confi, class_desc, net.GetNetworkFPS ()))
-                    # save as image
-                    iname = "/mnt/raw/img-{}_{}-cuda-{}_{}.jpg".format (kTS, kFot, class_desc, confi)
-                    #jetson.utils.saveImageRGBA (iname, cuda_mem, tsr_img.shape[0], tsr_img.shape[1])
-                    #iname = "/mnt/raw/img-{}_{:.0f}_{}-gray.png".format (kTS, pwp, kFot)
-                    #cv2.imwrite (iname, gray)
-                    iname = "/mnt/raw/img-{}_{}-ori.jpg".format (kTS, kFot)
-                    #cv2.imwrite (iname, tsr_img)
-                    iname = "/mnt/raw/img-{}_{}-frame.jpg".format (kTS, kFot)
-                    #cv2.imwrite (iname, sub_img)
-        #
+                    global cs_spd   
+                    if class_idx == 0:#kph20    
+                        cs_spd = 20 
+                    if class_idx == 1:#kph30    
+                        cs_spd = 30 
+                    if class_idx == 2:#kph50    
+                        cs_spd = 50 
+                    if class_idx == 3:#kph60    
+                        cs_spd = 60 
+                    if class_idx == 4:#kph70    
+                        cs_spd = 70 
+                    if class_idx == 5:#kph80    
+                        cs_spd = 80 
+                    if class_idx == 6:#kph100   
+                        cs_spd = 100    
+                    if class_idx == 7:#kph120   
+                        cs_spd = 120    
+                    global cs_sec   
+                    cs_sec = datetime.now().second
+                #.if confi > 990:
+            #.if class_idx >= 0:
         cv2.circle (result, (c_x, c_y), c_r, (0,0,255), 2)
+        #.for
+    #.if circles is not None:
+    #
     #return tsr_img
     return result
 #
@@ -219,14 +240,15 @@ while True:
             lFps_sec = cFps_sec
             #turn off sign display
             if cs_sec > 0:
+                # flash the indicator 
                 if cFps_sec % 2 == 0:
                     write_to_7seg (-1)
                 else:
                     write_to_7seg (cs_spd)
-                #
-                if cs_sec + 10 < cFps_sec:
+                # stop flashing and show the last speed
+                if cs_sec + 5 < cFps_sec:
                     cs_sec = 0
-                    write_to_7seg (-1)
+                    write_to_7seg (cs_spd)
             #
             if show_fps == True:
                 #print ("#i:max fps {}".format (lFps_M))
@@ -261,5 +283,7 @@ while True:
 #tsrfocr.stop()
 #print ("#w:dropping {} frames".format (tsrfocr.count()))
 #
+write_to_7seg (-1)
+
 camera.release()
 cv2.destroyAllWindows()
