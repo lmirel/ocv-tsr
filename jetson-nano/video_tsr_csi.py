@@ -11,6 +11,8 @@ import cv2
 
 from datetime import datetime
 #from tsrframeocr import TSRFrameOCR
+# pip3 install pyserial
+import serial
 
 import jetson.utils
 import jetson.inference
@@ -29,6 +31,26 @@ except:
     parser.print_help()
     sys.exit(0)
 #
+try:
+    ser = serial.Serial ('/dev/ttyUSB0', 9600, timeout=1)
+except:
+    print("")
+    print ('!serial port NOT accessible')
+    sys.exit(0)
+# open the serial port
+if ser.isOpen ():
+    print (ser.name + ' is open...')
+else:
+    print (ser.name + ' unable to open')
+    sys.exit(0)
+#
+st = 'v'
+ser.write (st.encode ())
+st = '0000'
+ser.write (st.encode ())
+st = '    '
+ser.write (st.encode ())
+#
 show_display = True
 #
 show_fps = True
@@ -41,7 +63,10 @@ lFps_M = 0    #max fps
 lFps_T = 0    #tot
 lFps_rS = 0   #running seconds
 cFk = 0       #frame count
-
+#
+cs_sec = 0
+cs_spd = 0
+#
 c_r_min = 5 #5 #10
 c_r_max = 30 #25 #50
 
@@ -58,6 +83,19 @@ upper_col2 = np.array ([180, 255, 255])
 #
 b_th = 170 #170 #70   #black_threshold 
 kFot = 0    #count of saved frames
+#
+def write_to_7seg (val):
+    #never access the serial twice for the same value
+    if write_to_7seg._mval == val:
+        return
+    #
+    write_to_7seg._mval = val
+    if val == -1:
+        st = '    '
+    else:
+        st = '{:4d}'.format (val)
+    #
+    ser.write (st.encode ())
 #
 def check_red_circles (image):
     blurred = cv2.blur (image, (5, 5))
@@ -118,19 +156,47 @@ def check_red_circles (image):
             if class_idx >= 0: # or confidence * 100) > 60:
                 confi = int (confidence * 1000)
                 if confi > 899:
+                    if confi > 995:
+                        #kph020
+                        #kph030
+                        #kph050
+                        #kph060
+                        #kph070
+                        #kph080
+                        #kph100
+                        #kph120
+                        global cs_spd
+                        if class_idx == 0:#kph20
+                            cs_spd = 20
+                        if class_idx == 1:#kph30
+                            cs_spd = 30
+                        if class_idx == 2:#kph50
+                            cs_spd = 50
+                        if class_idx == 3:#kph60
+                            cs_spd = 60
+                        if class_idx == 4:#kph70
+                            cs_spd = 70
+                        if class_idx == 5:#kph80
+                            cs_spd = 80
+                        if class_idx == 6:#kph100
+                            cs_spd = 100
+                        if class_idx == 7:#kph120
+                            cs_spd = 120
+                        global cs_sec
+                        cs_sec = datetime.now().second
                     # find the object description
                     class_desc = net.GetClassDesc (class_idx)
                     # save as image
                     iname = "/mnt/raw/img-{}_{}-cuda-{}_{}.jpg".format (kTS, kFot, class_desc, confi)
-                    jetson.utils.saveImageRGBA (iname, cuda_mem, tsr_img.shape[0], tsr_img.shape[1])
+                    #jetson.utils.saveImageRGBA (iname, cuda_mem, tsr_img.shape[0], tsr_img.shape[1])
                     # overlay the result on the image
                     print ("found sign {} {:s} - net {} fps {}".format (confi, class_desc, net.GetNetworkName (), net.GetNetworkFPS ()))
                     #iname = "/mnt/raw/img-{}_{:.0f}_{}-gray.png".format (kTS, pwp, kFot)
                     #cv2.imwrite (iname, gray)
                     iname = "/mnt/raw/img-{}_{}-ori.jpg".format (kTS, kFot)
-                    cv2.imwrite (iname, tsr_img)
+                    #cv2.imwrite (iname, tsr_img)
                     iname = "/mnt/raw/img-{}_{}-frame.jpg".format (kTS, kFot)
-                    cv2.imwrite (iname, image)
+                    #cv2.imwrite (iname, image)
                     #iname = "./raw/thd-gray-{}_{}.png".format (kTS, kFot)
         # draw the outer circle
         cv2.circle (result, (c_x, c_y), c_r, (0,0,255), 2)
@@ -150,7 +216,8 @@ camera = cv2.VideoCapture ('/mnt/cv2video-720p-20191101-140122-097784.avi')
 #camera = cv2.VideoCapture ('/mnt/Work/dataset/GOPR1415s.mp4')
 #camera = cv2.VideoCapture ('/home/jetson/Work/dataset/GP011416s.mp4')
 
-s_fm = 450  #start frame
+s_fm = 0 #450  #start frame
+write_to_7seg._mval = -2
 
 while True:
     try:
@@ -175,6 +242,17 @@ while True:
             if lFps_M < lFps_k:
               lFps_M = lFps_k
             lFps_sec = cFps_sec
+            #turn off sign display
+            if cs_sec > 0:
+                if cFps_sec % 2 == 0:
+                    write_to_7seg (-1)
+                else:
+                    write_to_7seg (cs_spd)
+                #
+                if cs_sec + 10 < cFps_sec:
+                    cs_sec = 0
+                    write_to_7seg (-1)
+            #
             if show_fps == True:
                 #print ("#i:max fps {}".format (lFps_M))
                 if lFps_rS > 0:
