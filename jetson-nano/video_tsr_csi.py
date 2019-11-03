@@ -68,7 +68,7 @@ cs_sec = 0
 cs_spd = 0
 #
 c_r_min = 5 #5 #10
-c_r_max = 30 #25 #50
+c_r_max = 20 #25 #50
 
 # define range of white color in HSV
 sensitivity = 15
@@ -144,7 +144,7 @@ def check_red_circles (image):
         c_y = int(i[1])
         c_r = int(i[2]) #autocrop the 'red' circle
         #print("#i:detected circle {}x{}r{}".format(c_x, c_y, c_r))
-        if c_r > 6 and c_x > c_r and c_y > c_r:
+        if True: #c_r > 6 and c_x > c_r and c_y > c_r:
             tsr_img = sub_img.copy()
             tsr_img = tsr_img[c_y - c_r:c_y + c_r, c_x - c_r:c_x + c_r]
             #
@@ -169,8 +169,9 @@ def check_red_circles (image):
                 cv2.imwrite (iname, sub_img)
                 # overlay the result on the image
                 if confi > 990:
-                    print ("found sign {} {:s}".format (confi, class_desc))
+                    print ("found sign {:.2f}% {:s} on {:d}".format (confidence * 100, class_desc, kFot))
                     #print ("found sign {} {:s} fps {}".format (confi, class_desc, net.GetNetworkFPS ()))
+                    # update the indicator
                     global cs_spd   
                     if class_idx == 0:#kph20    
                         cs_spd = 20 
