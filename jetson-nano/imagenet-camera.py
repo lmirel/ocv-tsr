@@ -21,11 +21,19 @@
 # DEALINGS IN THE SOFTWARE.
 #
 
+#
+# v4l2-ctl -d /dev/video0 --set-ctrl=bypass_mode=0 --stream-mmap
+#
+
 import jetson.inference
 import jetson.utils
 
 import argparse
 import sys
+
+import ctypes
+import numpy
+import cv2
 
 # parse the command line
 parser = argparse.ArgumentParser(description="Classify a live camera stream using an image recognition DNN.", 
@@ -43,31 +51,75 @@ except:
 	parser.print_help()
 	sys.exit(0)
 
+camera = jetson.utils.gstCamera (opt.width, opt.height, opt.camera)
+#display = jetson.utils.glDisplay ()
+
+img, width, height = camera.CaptureRGBA (zeroCopy = True)
+jetson.utils.cudaDeviceSynchronize ()
+jetson.utils.saveImageRGBA ("camera.jpg", img, width, height)
+# create a numpy ndarray that references the CUDA memory
+# it won't be copied, but uses the same memory underneath
+aimg = jetson.utils.cudaToNumpy (img, width, height, 4)
+#print (aimg)
+#aimg1 = aimg.astype (numpy.uint8)
+#print ("img shape {}".format (aimg1.shape))
+aimg1 = cv2.cvtColor (aimg, cv2.COLOR_RGBA2BGR)
+print (aimg1)
+cv2.imwrite ("array.jpg", aimg1)
+# save as image
+
+#exit()
+#
+# video
+from datetime import datetime
+vname = "/mnt/cv2video-{}p-{}.avi".format (opt.height, datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
+# Define the codec and create VideoWriter object.The output is stored in 'outpy.avi' file.
+#fourcc = cv2.VideoWriter_fourcc(*'XVID')  # cv2.VideoWriter_fourcc() does not exist
+#fourcc = cv2.VideoWriter_fourcc(*'X264')  # cv2.VideoWriter_fourcc() does not exist
+fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # cv2.VideoWriter_fourcc() does not exist
+video_writer = cv2.VideoWriter (vname, fourcc, 30, (opt.width, opt.height))
+#
 # load the recognition network
 net = jetson.inference.imageNet (opt.network, sys.argv)
 
 # create the camera and display
 font = jetson.utils.cudaFont ()
-camera = jetson.utils.gstCamera (opt.width, opt.height, opt.camera)
-display = jetson.utils.glDisplay ()
-
 # process frames until user exits
-while display.IsOpen():
-	# capture the image
-	img, width, height = camera.CaptureRGBA ()
-
-	# classify the image
-	class_idx, confidence = net.Classify (img, width, height)
-	if (confidence * 100) > 50:
-		# find the object description
-		class_desc = net.GetClassDesc (class_idx)
-		# overlay the result on the image
-		font.OverlayText(img, width, height, "{:05.2f}% {:s}".format (confidence * 100, class_desc), 5, 5, font.White, font.Gray40)
-		# print out performance info
-		net.PrintProfilerTimes ()
-	
-	# render the image
-	display.RenderOnce (img, width, height)
-
-	# update the title bar
-	display.SetTitle("{:s} | Network {:.0f} FPS".format (net.GetNetworkName (), net.GetNetworkFPS ()))
+#while display.IsOpen():
+while True:
+    try:
+        # capture the image
+        img, width, height = camera.CaptureRGBA (zeroCopy = True)
+        jetson.utils.cudaDeviceSynchronize ()
+        # create a numpy ndarray that references the CUDA memory
+        # it won't be copied, but uses the same memory underneath
+        aimg = jetson.utils.cudaToNumpy (img, width, height, 4)
+        #print ("img shape {}".format (aimg1.shape))
+        aimg1 = cv2.cvtColor (aimg.astype (numpy.uint8), cv2.COLOR_RGBA2BGR)
+        # add frame to video
+        video_writer.write (aimg1)
+        #
+        cv2.imshow ("camera", aimg1)
+        # classify the image
+        class_idx, confidence = net.Classify (img, width, height)
+        if (confidence * 100) > 60:
+            # find the object description
+            class_desc = net.GetClassDesc (class_idx)
+            # overlay the result on the image
+            font.OverlayText(img, width, height, "{:05.2f}% {:s}".format (confidence * 100, class_desc), 5, 5, font.White, font.Gray40)
+            print ("found {:05.2f}% {:s} - net {} fps {}".format (confidence * 100, class_desc, net.GetNetworkName (), net.GetNetworkFPS ()))
+            # print out performance info
+            net.PrintProfilerTimes ()
+        print ("- net {} fps {}".format (net.GetNetworkName (), net.GetNetworkFPS ()))
+        # render the image
+        #display.RenderOnce (img, width, height)
+        # update the title bar
+        #display.SetTitle("{:s} | Network {:.0f} FPS".format (net.GetNetworkName (), net.GetNetworkFPS ()))
+        #
+        cv2.waitKey (1)
+    #
+    except KeyboardInterrupt:
+        break
+#
+video_writer.release()
+cv2.destroyAllWindows()
