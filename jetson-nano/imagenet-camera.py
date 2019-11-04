@@ -27,15 +27,17 @@
 
 import jetson.inference
 import jetson.utils
-
+from jetcam.csi_camera import CSICamera
+from jetcam.usb_camera import USBCamera
+#
 import argparse
 import sys
 from datetime import datetime
-
+#
 import ctypes
 import numpy as np
 import cv2
-
+#
 # parse the command line
 parser = argparse.ArgumentParser(description="Classify a live camera stream using an image recognition DNN.", 
 						   formatter_class=argparse.RawTextHelpFormatter, epilog=jetson.inference.imageNet.Usage())
@@ -53,6 +55,7 @@ except:
 	sys.exit(0)
 #
 save_video = False
+csi_camera = True   # use CSI/USB camera or gstCamera
 #
 c_r_min = 5 #5 #10
 c_r_max = 30 #25 #50
@@ -67,7 +70,16 @@ upper_col2 = np.array ([180, 255, 255])
 kFot = 0    #count of saved frames
 #
 def check_red_circles (image):
-    blurred = cv2.blur (image, (5, 5))
+    #crop the image area containing the circle
+    sub_img = image.copy()
+    #1280x720
+    c_ry = 180
+    c_yy = c_ry
+    c_rx = 180
+    c_xx = 640
+    sub_img = sub_img[c_yy - c_ry:c_yy + c_ry, c_xx - c_rx:c_xx + c_rx]
+    # process subimage
+    blurred = cv2.blur (sub_img, (5, 5))
     hsv = cv2.cvtColor (blurred, cv2.COLOR_BGR2HSV)
     # construct a mask for the color "green", then perform
     # a series of dilations and erosions to remove any small
@@ -138,27 +150,31 @@ def check_red_circles (image):
         cv2.circle (result, (c_x, c_y), c_r, (0,0,255), 2)
     #return tsr_img
     return result
-
-camera = jetson.utils.gstCamera (opt.width, opt.height, opt.camera)
-#display = jetson.utils.glDisplay ()
-
-img, width, height = camera.CaptureRGBA (zeroCopy = True)
-jetson.utils.cudaDeviceSynchronize ()
-jetson.utils.saveImageRGBA ("camera.jpg", img, width, height)
-# create a numpy ndarray that references the CUDA memory
-# it won't be copied, but uses the same memory underneath
-aimg = jetson.utils.cudaToNumpy (img, width, height, 4)
-#print (aimg)
-#aimg1 = aimg.astype (numpy.uint8)
-#print ("img shape {}".format (aimg1.shape))
-aimg1 = cv2.cvtColor (aimg, cv2.COLOR_RGBA2BGR)
-#print (aimg1)
-cv2.imwrite ("array.jpg", aimg1)
-# save as image
-
-#exit()
 #
-# video
+# camera setup
+#display = jetson.utils.glDisplay ()
+if csi_camera == False:
+    camera = jetson.utils.gstCamera (opt.width, opt.height, opt.camera)
+    img, width, height = camera.CaptureRGBA (zeroCopy = True)
+    jetson.utils.cudaDeviceSynchronize ()
+    jetson.utils.saveImageRGBA ("camera.jpg", img, width, height)
+    # create a numpy ndarray that references the CUDA memory
+    # it won't be copied, but uses the same memory underneath
+    aimg = jetson.utils.cudaToNumpy (img, width, height, 4)
+    #print (aimg)
+    #aimg1 = aimg.astype (numpy.uint8)
+    #print ("img shape {}".format (aimg1.shape))
+    aimg1 = cv2.cvtColor (aimg, cv2.COLOR_RGBA2BGR)
+    #print (aimg1)
+    cv2.imwrite ("array.jpg", aimg1)
+    # save as image
+    #exit()
+else:
+    #camera = CSICamera (width=opt.width, height=opt.height)
+    # or
+    camera = USBCamera (width=opt.width, height=opt.height, capture_device=3)
+#
+# prep video storing
 if save_video == True:
     vname = "/mnt/cv2video-{}p-{}.avi".format (opt.height, datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
     # Define the codec and create VideoWriter object.The output is stored in 'outpy.avi' file.
@@ -177,13 +193,17 @@ font = jetson.utils.cudaFont ()
 while True:
     try:
         # capture the image
-        img, width, height = camera.CaptureRGBA (zeroCopy = True)
-        jetson.utils.cudaDeviceSynchronize ()
-        # create a numpy ndarray that references the CUDA memory
-        # it won't be copied, but uses the same memory underneath
-        aimg = jetson.utils.cudaToNumpy (img, width, height, 4)
-        #print ("img shape {}".format (aimg1.shape))
-        aimg1 = cv2.cvtColor (aimg.astype (np.uint8), cv2.COLOR_RGBA2BGR)
+        if csi_camera == False:
+            img, width, height = camera.CaptureRGBA (zeroCopy = True)
+            jetson.utils.cudaDeviceSynchronize ()
+            # create a numpy ndarray that references the CUDA memory
+            # it won't be copied, but uses the same memory underneath
+            aimg = jetson.utils.cudaToNumpy (img, width, height, 4)
+            #print ("img shape {}".format (aimg1.shape))
+            aimg1 = cv2.cvtColor (aimg.astype (np.uint8), cv2.COLOR_RGBA2BGR)
+        else:
+            aimg1 = camera.read()
+        #
         if save_video == True:
             # add frame to video
             video_writer.write (aimg1)
