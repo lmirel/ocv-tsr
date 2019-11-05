@@ -25,6 +25,7 @@ parser = argparse.ArgumentParser(description="Classify a live camera stream usin
 
 parser.add_argument("--video", type=str, help="filename of the video to process")
 parser.add_argument("--network", type=str, default="googlenet", help="pre-trained model to load (see below for options)")
+parser.add_argument("--threshold", type=float, default=0.5, help="minimum detection threshold to use")
 #
 try:
     opt = parser.parse_known_args()[0]
@@ -52,7 +53,7 @@ if ser is not None and ser.isOpen ():
     st = '    '
     ser.write (st.encode ())
 #
-show_display = True
+show_display = False
 #
 show_fps = True
 #
@@ -104,13 +105,79 @@ def write_to_7seg (val):
     #
     ser.write (st.encode ())
 #
-def check_red_circles (image):
-    kTS = "{}".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
+def img_subrange (img):
     #crop the image area containing the circle
-    sub_img = image.copy()
     # subtract the interesting frame
     global c_xx, c_yy, c_rx, c_ry 
-    sub_img = sub_img[c_yy - c_ry:c_yy + c_ry, c_xx - c_rx:c_xx + c_rx]
+    return img.copy()[c_yy - c_ry:c_yy + c_ry, c_xx - c_rx:c_xx + c_rx]
+#
+def do_detect (cuda_mem, width, height):
+    # detect objects in the image (with overlay)
+    return detnet.Detect (cuda_mem, width, height, "box,labels,conf")
+#
+def do_ai (tsr_img, kTS, kFot, sub_img, dfy, cfy):
+    width = tsr_img.shape[0]
+    height = tsr_img.shape[1]
+    confi = 0
+    #cv2.imwrite (iname, final)
+    #iname = "./raw/thd-image-{}_{}.png".format (kTS, kFot)
+    tsr_imga = cv2.cvtColor (tsr_img, cv2.COLOR_BGR2RGBA)
+    cuda_mem = jetson.utils.cudaFromNumpy (tsr_imga)
+    # print the detections
+    if dfy == True:
+        detections = detnet.Detect (cuda_mem, width, height, "box,labels,conf")
+        if len (detections) > 0:
+            #print("detected {:d} objects in image".format(len(detections)))
+            iname = "/mnt/_tsr/raw/_objs/img-{}_{}-cuda-o{}.jpg".format (kTS, kFot, 0)
+            #jetson.utils.saveImageRGBA (iname, cuda_mem, width, height)
+            #for detection in detections:
+            #    print(detection)
+            # print out timing info
+            #net.PrintProfilerTimes()
+            #print (cuda_mem)
+        #
+    if cfy == True:
+        class_idx, confidence = imgnet.Classify (cuda_mem, width, height)
+        confi = int (confidence * 1000)
+        if class_idx >= 0 and confi > 800: # or confidence * 100) > 60:
+            # find the object description
+            class_desc = imgnet.GetClassDesc (class_idx)
+            #print ("found sign {:d} {:s} on {:d}".format (confi, class_desc, kFot))
+            # save images
+            iname = "/mnt/_tsr/raw/{}/img-{}_{}-cuda-c{}.jpg".format (class_desc, kTS, kFot, confi)
+            #jetson.utils.saveImageRGBA (iname, cuda_mem, width, height)
+            iname = "/mnt/_tsr/raw/{}/img-{}_{}-ori.jpg".format (class_desc, kTS, kFot)
+            #cv2.imwrite (iname, tsr_img)
+            if sub_img is not None:
+                iname = "/mnt/_tsr/raw/{}/img-{}_{}-frame.jpg".format (class_desc, kTS, kFot)
+                #cv2.imwrite (iname, sub_img)
+            # overlay the result on the image
+            if confi > 990: # over 99% confidence
+                #print ("found sign {} {:s} fps {}".format (confi, class_desc, net.GetNetworkFPS ()))
+                # update the indicator
+                global cs_spd   
+                if class_idx == 0:#kph20    
+                    cs_spd = 20 
+                if class_idx == 1:#kph30    
+                    cs_spd = 30 
+                if class_idx == 2:#kph50    
+                    cs_spd = 50 
+                if class_idx == 3:#kph60    
+                    cs_spd = 60 
+                if class_idx == 4:#kph70    
+                    cs_spd = 70 
+                if class_idx == 5:#kph80    
+                    cs_spd = 80 
+                if class_idx == 6:#kph100   
+                    cs_spd = 100    
+                if class_idx == 7:#kph120   
+                    cs_spd = 120    
+                global cs_sec   
+                cs_sec = datetime.now().second
+    return confi
+#
+def check_red_circles (image, kTS):
+    sub_img = img_subrange (image)
     # process subimage
     blurred = cv2.blur (sub_img, (5, 5))
     hsv = cv2.cvtColor (blurred, cv2.COLOR_BGR2HSV)
@@ -140,7 +207,7 @@ def check_red_circles (image):
     c_y = 0
     c_r = 0
     if circles is not None:
-      kTS = "{}".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
+      #kTS = "{}".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
       #iname = "/mnt/raw/img-{}-frame.png".format (kTS)
       #circles = np.uint16 (np.around (circles))
       for i in circles[0,:]:
@@ -154,49 +221,9 @@ def check_red_circles (image):
             #
             global kFot
             kFot = kFot + 1
-            #cv2.imwrite (iname, final)
-            #iname = "./raw/thd-image-{}_{}.png".format (kTS, kFot)
-            tsr_imga = cv2.cvtColor (tsr_img, cv2.COLOR_BGR2RGBA)
-            cuda_mem = jetson.utils.cudaFromNumpy (tsr_imga)
-            #print (cuda_mem)
-            class_idx, confidence = net.Classify (cuda_mem, tsr_img.shape[0], tsr_img.shape[1])
-            if class_idx >= 0: # or confidence * 100) > 60:
-                confi = int (confidence * 1000)
-                # find the object description
-                class_desc = net.GetClassDesc (class_idx)
-                # save images
-                iname = "/mnt/.tsr/raw/{}/img-{}_{}-cuda-c{}.jpg".format (class_desc, kTS, kFot, confi)
-                jetson.utils.saveImageRGBA (iname, cuda_mem, tsr_img.shape[0], tsr_img.shape[1])
-                iname = "/mnt/.tsr/raw/{}/img-{}_{}-ori.jpg".format (class_desc, kTS, kFot)
-                cv2.imwrite (iname, tsr_img)
-                iname = "/mnt/.tsr/raw/{}/img-{}_{}-frame.jpg".format (class_desc, kTS, kFot)
-                cv2.imwrite (iname, sub_img)
-                # overlay the result on the image
-                if confi > 990: # over 99% confidence
-                    print ("found sign {:.2f}% {:s} on {:d}".format (confidence * 100, class_desc, kFot))
-                    #print ("found sign {} {:s} fps {}".format (confi, class_desc, net.GetNetworkFPS ()))
-                    # update the indicator
-                    global cs_spd   
-                    if class_idx == 0:#kph20    
-                        cs_spd = 20 
-                    if class_idx == 1:#kph30    
-                        cs_spd = 30 
-                    if class_idx == 2:#kph50    
-                        cs_spd = 50 
-                    if class_idx == 3:#kph60    
-                        cs_spd = 60 
-                    if class_idx == 4:#kph70    
-                        cs_spd = 70 
-                    if class_idx == 5:#kph80    
-                        cs_spd = 80 
-                    if class_idx == 6:#kph100   
-                        cs_spd = 100    
-                    if class_idx == 7:#kph120   
-                        cs_spd = 120    
-                    global cs_sec   
-                    cs_sec = datetime.now().second
-                #.if confi > 990:
-            #.if class_idx >= 0:
+            #
+            do_ai (tsr_img, kTS, kFot, sub_img, False, True)
+            #
         cv2.circle (result, (c_x, c_y), c_r, (0,0,255), 2)
         #.for
     #.if circles is not None:
@@ -207,14 +234,15 @@ def check_red_circles (image):
 ESC=27   
 Mm = 0  #max matches
 #
-#
 camera = cv2.VideoCapture (opt.video)
 #camera = cv2.VideoCapture ('/mnt/.tsr/cv2video-720p-20191101-140122-097784.avi')
 #camera = cv2.VideoCapture ('/mnt/.tsr/GOPR1415s.mp4')
 #camera = cv2.VideoCapture ('/mnt/.tsr/GP011416s.mp4')
 #
 # load the recognition network
-net = jetson.inference.imageNet (opt.network, sys.argv)
+imgnet = jetson.inference.imageNet (opt.network, sys.argv)
+# load the object detection network
+detnet = jetson.inference.detectNet ("ssd-mobilenet-v2", threshold=0.5)
 #
 s_fm = 0 #450  #start frame
 write_to_7seg._mval = -2
@@ -228,10 +256,21 @@ while True:
         #
         cFk = cFk + 1
         if imgCamColor is not None:
+            kTS = "{}".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
             result = imgCamColor
             #if cFk % 5 == 0:
             if cFk > s_fm:
-              result = check_red_circles (imgCamColor)
+                # on 10watt nvpmodel -m0 && jetson_clocks:
+                # img_subrange 60fps
+                # check_red_circles 60fps
+                # subrange + classify 38fps
+                # red detect + classify: approx.30fps-60fps
+                ###
+                # subrange + classify 1 or 91 17fps
+                result = check_red_circles (imgCamColor, kTS) #img_subrange (imgCamColor) #check_red_circles (imgCamColor, kTS)
+                #
+                #if result is not None:
+                #   do_ai (result, kTS, 1, None, True, False)
             #fps computation
             cFps_sec = datetime.now().second
             lFps_k = lFps_k + 1
