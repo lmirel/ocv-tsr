@@ -23,7 +23,9 @@ import sys
 parser = argparse.ArgumentParser(description="Classify a live camera stream using an image recognition DNN.", 
                            formatter_class=argparse.RawTextHelpFormatter, epilog=jetson.inference.imageNet.Usage())
 
+parser.add_argument("--video", type=str, help="filename of the video to process")
 parser.add_argument("--network", type=str, default="googlenet", help="pre-trained model to load (see below for options)")
+#
 try:
     opt = parser.parse_known_args()[0]
 except:
@@ -36,24 +38,22 @@ try:
 except:
     print("")
     print ('!serial port NOT accessible')
-    sys.exit(0)
-# open the serial port
-if ser.isOpen ():
-    print (ser.name + ' is open...')
-else:
-    print (ser.name + ' unable to open')
-    sys.exit(0)
+    ser = None
+    #sys.exit(0)
 #
-st = 'v'
-ser.write (st.encode ())
-st = '0000'
-ser.write (st.encode ())
-st = '    '
-ser.write (st.encode ())
+# open the serial port
+if ser is not None and ser.isOpen ():
+    print (ser.name + ' is open...')
+    #
+    st = 'v'
+    ser.write (st.encode ())
+    st = '0000'
+    ser.write (st.encode ())
+    st = '    '
+    ser.write (st.encode ())
 #
 show_display = True
 #
-show_fps = True
 show_fps = True
 #
 lFps_sec = 0  #current second
@@ -66,25 +66,32 @@ cFk = 0       #frame count
 #
 cs_sec = 0
 cs_spd = 0
-#
+# circles identification
 c_r_min = 5 #5 #10
-c_r_max = 20 #25 #50
-
-# define range of white color in HSV
-sensitivity = 15
-lower_white = np.array([0, 0, 255 - sensitivity])
-upper_white = np.array([255, sensitivity, 255])
-#this is red
+c_r_max = 30 #30 #25 #50
+# define range of red color in HSV
 lower_col1 = np.array ([0,  50,  50])
 upper_col1 = np.array ([10, 255, 255])
 #
 lower_col2 = np.array ([170, 50,  50])
 upper_col2 = np.array ([180, 255, 255])
 #
-b_th = 170 #170 #70   #black_threshold 
 kFot = 0    #count of saved frames
+#POV definition
+# source 1280x720
+# of interest povs
+# xx >= 640 - right half
+# yy <= 360 - top half
+# xx: 320..640..960
+# yy: 180..360..540
+c_xx = (640 + 160) # horizontal mid-point
+c_yy = 360 #c_ry # vertical mid-point
+c_rx = int (360 / 2) # horizontal width (half): x-rx, x+rx
+c_ry = int (360 / 2) # vertical width (half):   y-ry, y+ry
 #
 def write_to_7seg (val):
+    if ser is None:
+        return
     #never access the serial twice for the same value
     if write_to_7seg._mval == val:
         return
@@ -101,11 +108,8 @@ def check_red_circles (image):
     kTS = "{}".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
     #crop the image area containing the circle
     sub_img = image.copy()
-    #1280x720
-    c_ry = 180
-    c_yy = c_ry
-    c_rx = 180
-    c_xx = 640
+    # subtract the interesting frame
+    global c_xx, c_yy, c_rx, c_ry 
     sub_img = sub_img[c_yy - c_ry:c_yy + c_ry, c_xx - c_rx:c_xx + c_rx]
     # process subimage
     blurred = cv2.blur (sub_img, (5, 5))
@@ -161,14 +165,14 @@ def check_red_circles (image):
                 # find the object description
                 class_desc = net.GetClassDesc (class_idx)
                 # save images
-                iname = "/mnt/raw/img-{}_{}-cuda-{}_{}.jpg".format (kTS, kFot, class_desc, confi)
+                iname = "/mnt/.tsr/raw/{}/img-{}_{}-cuda-c{}.jpg".format (class_desc, kTS, kFot, confi)
                 jetson.utils.saveImageRGBA (iname, cuda_mem, tsr_img.shape[0], tsr_img.shape[1])
-                iname = "/mnt/raw/img-{}_{}-ori.jpg".format (kTS, kFot)
+                iname = "/mnt/.tsr/raw/{}/img-{}_{}-ori.jpg".format (class_desc, kTS, kFot)
                 cv2.imwrite (iname, tsr_img)
-                iname = "/mnt/raw/img-{}_{}-frame.jpg".format (kTS, kFot)
+                iname = "/mnt/.tsr/raw/{}/img-{}_{}-frame.jpg".format (class_desc, kTS, kFot)
                 cv2.imwrite (iname, sub_img)
                 # overlay the result on the image
-                if confi > 990:
+                if confi > 990: # over 99% confidence
                     print ("found sign {:.2f}% {:s} on {:d}".format (confidence * 100, class_desc, kFot))
                     #print ("found sign {} {:s} fps {}".format (confi, class_desc, net.GetNetworkFPS ()))
                     # update the indicator
@@ -202,17 +206,16 @@ def check_red_circles (image):
 #
 ESC=27   
 Mm = 0  #max matches
-
-#tsrfocr = TSRFrameOCR ()
-#tsrfocr.start ()
-
+#
+#
+camera = cv2.VideoCapture (opt.video)
+#camera = cv2.VideoCapture ('/mnt/.tsr/cv2video-720p-20191101-140122-097784.avi')
+#camera = cv2.VideoCapture ('/mnt/.tsr/GOPR1415s.mp4')
+#camera = cv2.VideoCapture ('/mnt/.tsr/GP011416s.mp4')
+#
 # load the recognition network
 net = jetson.inference.imageNet (opt.network, sys.argv)
-
-camera = cv2.VideoCapture ('/mnt/cv2video-720p-20191101-140122-097784.avi')
-#camera = cv2.VideoCapture ('/mnt/Work/dataset/GOPR1415s.mp4')
-#camera = cv2.VideoCapture ('/home/jetson/Work/dataset/GP011416s.mp4')
-
+#
 s_fm = 0 #450  #start frame
 write_to_7seg._mval = -2
 
