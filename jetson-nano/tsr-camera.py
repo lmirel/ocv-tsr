@@ -35,6 +35,7 @@ import cv2
 import serial
 #
 from tsrvideosave import TSRvideoSave
+from tsrframesave import TSRframeSave
 # parse the command line
 parser = argparse.ArgumentParser(description="Classify a live camera stream using an image recognition DNN.", 
 						   formatter_class=argparse.RawTextHelpFormatter, epilog=jetson.inference.imageNet.Usage())
@@ -176,14 +177,17 @@ def do_ai (tsr_img, kTS, kFot, sub_img, dfy, cfy):
             class_desc = imgnet.GetClassDesc (class_idx)
             print ("found sign {:d} {:s} on {:d}".format (confi, class_desc, kFot))
             # save images
+            global tsr_fs
             iname = "/mnt/_tsr/raw/{}/img-{}_{}-ori-c{}.jpg".format (class_desc, kTS, kFot, confi)
             #cv2.imwrite (iname, tsr_img)
+            tsr_fs.save (tsr_img, iname)
             # save originating frame, for reference
             if sub_img is not None:
                 iname = "/mnt/_tsr/raw/{}/img-{}_{}-frame.jpg".format (class_desc, kTS, kFot)
                 #cv2.imwrite (iname, sub_img)
+                tsr_fs.save (sub_img, iname)
             # overlay the result on the image
-            if confi > 950: # over 99% confidence
+            if confi > 980: # over 99% confidence
                 #print ("found sign {} {:s} fps {}".format (confi, class_desc, net.GetNetworkFPS ()))
                 # update the indicator
                 global cs_spd   
@@ -205,6 +209,8 @@ def do_ai (tsr_img, kTS, kFot, sub_img, dfy, cfy):
                     cs_spd = 120    
                 global cs_sec   
                 cs_sec = datetime.now().second
+                print ("{}kph sign {:d} {:s} on {:d}".format (cs_spd, confi, class_desc, kFot))
+            #
     return confi
 #
 def check_red_circles (image, kTS):
@@ -302,6 +308,8 @@ imgnet = jetson.inference.imageNet (opt.network, sys.argv)
 # create the camera and display
 font = jetson.utils.cudaFont ()
 # process frames until user exits
+tsr_fs = TSRframeSave ()
+tsr_fs.start ()
 #while display.IsOpen():
 while True:
     try:
@@ -326,13 +334,19 @@ while True:
         # do filter and classification
         kTS = "{}".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
         # on 10watt nvpmodel -m0 && jetson_clocks:
-        # img_subrange 60fps
-        # check_red_circles 60fps
+        # img_subrange 28fps
+        # check_red_circles 28fps
         # subrange + classify 38fps
         # red detect + classify: approx.30fps-60fps
         ###
         # subrange + classify 1 or 91 17fps
-        result = check_red_circles (aimg1, kTS) #img_subrange (imgCamColor) #check_red_circles (imgCamColor, kTS)
+        #
+        # on 5watt nvpmodel -m1 && jetson_clocks
+        # img_subrange 28fps
+        # check_red_circles NO AI 22fps
+        # check_red_circles + classify 14fps
+        #
+        result = check_red_circles (aimg1, kTS) #img_subrange (aimg1) #check_red_circles (aimg1, kTS) #img_subrange (aimg1) #check_red_circles (aimg1, kTS)
         #
         #fps computation
         cFps_sec = datetime.now().second
@@ -384,9 +398,12 @@ while True:
 #
 write_to_7seg (-1)
 #
+tsr_fs.stop()
+print ("#w:dropping {} frames".format (tsr_fs.count()))
+#
 if save_video == True:
     tsr_vs.stop()
-    print ("#w:dropping {} frames".format (tsr_vs.count()))
+    print ("#w:dropping {} video frames".format (tsr_vs.count()))
     video_writer.release()
 if show_display == True:
     cv2.destroyAllWindows()
