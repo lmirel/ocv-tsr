@@ -1,28 +1,21 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
+#./tsr-camera.py --model=resnet18_e34.onnx --input_blob=input_0 --output_blob=output_0 --labels=labels.txt --video=1
+#./tsr-camera.py --model=resnet18_e34.onnx --input_blob=input_0 --output_blob=output_0 --labels=labels.txt --video=1 --display=1
+# note: with --video=1, the frame rate drops by approx.10fps
+
+# * add user access to /dev/ttyUSBx
+# > create /etc/udev/rules.d/60-extra-acl.rules with content:
+# KERNEL=="ttyUSB[0-9]*", MODE="0666"
+# > reload udev: udevadm control --reload-rules && udevadm trigger
+
+# * test video camera
+# v4l2-ctl -d /dev/video0 --set-ctrl=bypass_mode=0 --stream-mmap
 #
 
-#
-# v4l2-ctl -d /dev/video0 --set-ctrl=bypass_mode=0 --stream-mmap
+#pin 1 of J40 can be used as manually power on/off control
+#1. Short pin 7 & 8 of J40 to disable auto-power-on function
+#2. Then shortly short pin 1 to ground to power on system, or long (~10s) short pin 1 to ground to power off system
 #
 
 import jetson.inference
@@ -40,6 +33,8 @@ import cv2
 #
 # pip3 install pyserial
 import serial
+#
+from tsrvideosave import TSRvideoSave
 # parse the command line
 parser = argparse.ArgumentParser(description="Classify a live camera stream using an image recognition DNN.", 
 						   formatter_class=argparse.RawTextHelpFormatter, epilog=jetson.inference.imageNet.Usage())
@@ -49,6 +44,7 @@ parser.add_argument("--camera", type=str, default="0", help="index of the MIPI C
 parser.add_argument("--width", type=int, default=1280, help="desired width of camera stream (default is 1280 pixels)")
 parser.add_argument("--height", type=int, default=720, help="desired height of camera stream (default is 720 pixels)")
 parser.add_argument("--display", type=int, default=0, help="render stream to DISPLAY")
+parser.add_argument("--video", type=int, default=0, help="render stream to DISPLAY")
 
 try:
 	opt = parser.parse_known_args()[0]
@@ -71,10 +67,10 @@ if ser is not None and ser.isOpen ():
     #
     st = 'v'
     ser.write (st.encode ())
-    st = '0000'
+    st = 'rrrr'
     ser.write (st.encode ())
-    st = '    '
-    ser.write (st.encode ())
+#    st = '    '
+#    ser.write (st.encode ())
 #
 def write_to_7seg (val):
     if ser is None:
@@ -93,12 +89,15 @@ def write_to_7seg (val):
 write_to_7seg._mval = -2
 #
 save_video = False
+if opt.video == 1:
+    save_video = True
+#
 csi_camera = True   # use CSI/USB camera or gstCamera
 #
 show_display = False
 if opt.display == 1:
     show_display = True
-
+#
 ESC = 27
 show_fps = True
 #
@@ -177,10 +176,9 @@ def do_ai (tsr_img, kTS, kFot, sub_img, dfy, cfy):
             class_desc = imgnet.GetClassDesc (class_idx)
             print ("found sign {:d} {:s} on {:d}".format (confi, class_desc, kFot))
             # save images
-            iname = "/mnt/_tsr/raw/{}/img-{}_{}-cuda-c{}.jpg".format (class_desc, kTS, kFot, confi)
-            #jetson.utils.saveImageRGBA (iname, cuda_mem, width, height)
-            iname = "/mnt/_tsr/raw/{}/img-{}_{}-ori.jpg".format (class_desc, kTS, kFot)
+            iname = "/mnt/_tsr/raw/{}/img-{}_{}-ori-c{}.jpg".format (class_desc, kTS, kFot, confi)
             #cv2.imwrite (iname, tsr_img)
+            # save originating frame, for reference
             if sub_img is not None:
                 iname = "/mnt/_tsr/raw/{}/img-{}_{}-frame.jpg".format (class_desc, kTS, kFot)
                 #cv2.imwrite (iname, sub_img)
@@ -289,12 +287,14 @@ else:
 #
 # prep video storing
 if save_video == True:
-    vname = "/mnt/cv2video-{}p-{}.avi".format (opt.height, datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
+    vname = "/mnt/_tsr/raw/video-{}p-{}.avi".format (opt.height, datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
     # Define the codec and create VideoWriter object.The output is stored in 'outpy.avi' file.
     #fourcc = cv2.VideoWriter_fourcc(*'XVID')  # cv2.VideoWriter_fourcc() does not exist
     #fourcc = cv2.VideoWriter_fourcc(*'X264')  # cv2.VideoWriter_fourcc() does not exist
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # cv2.VideoWriter_fourcc() does not exist
     video_writer = cv2.VideoWriter (vname, fourcc, 30, (opt.width, opt.height))
+    tsr_vs = TSRvideoSave ()
+    tsr_vs.start (video_writer)
 #
 # load the recognition network
 imgnet = jetson.inference.imageNet (opt.network, sys.argv)
@@ -321,7 +321,8 @@ while True:
         #
         if save_video == True:
             # add frame to video
-            video_writer.write (aimg1)
+            #video_writer.write (aimg1)
+            tsr_vs.save (aimg1)
         # do filter and classification
         kTS = "{}".format (datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
         # on 10watt nvpmodel -m0 && jetson_clocks:
@@ -381,6 +382,12 @@ while True:
     except KeyboardInterrupt:
         break
 #
-video_writer.release()
-cv2.destroyAllWindows()
+write_to_7seg (-1)
+#
+if save_video == True:
+    tsr_vs.stop()
+    print ("#w:dropping {} frames".format (tsr_vs.count()))
+    video_writer.release()
+if show_display == True:
+    cv2.destroyAllWindows()
 #

@@ -1,3 +1,8 @@
+#!/usr/bin/python3
+#
+#tsr-video.py --model=resnet18_e34.onnx --input_blob=input_0 --output_blob=output_0 --labels=labels.txt --video=1
+#tsr-video.py --model=resnet18_e34.onnx --input_blob=input_0 --output_blob=output_0 --labels=labels.txt --video=1 --display=1
+
 #
 # https://www.design-reuse.com/articles/41154/traffic-sign-recognition-tsr-system.html
 #
@@ -22,10 +27,11 @@ import sys
 # parse the command line
 parser = argparse.ArgumentParser(description="Classify a live camera stream using an image recognition DNN.", 
                            formatter_class=argparse.RawTextHelpFormatter, epilog=jetson.inference.imageNet.Usage())
-
+#
 parser.add_argument("--video", type=str, help="filename of the video to process")
 parser.add_argument("--network", type=str, default="googlenet", help="pre-trained model to load (see below for options)")
 parser.add_argument("--threshold", type=float, default=0.5, help="minimum detection threshold to use")
+parser.add_argument("--display", type=int, default=0, help="render stream to DISPLAY")
 #
 try:
     opt = parser.parse_known_args()[0]
@@ -54,6 +60,8 @@ if ser is not None and ser.isOpen ():
     ser.write (st.encode ())
 #
 show_display = False
+if opt.display == 1:
+    show_display = True
 #
 show_fps = True
 #
@@ -329,4 +337,6 @@ while True:
 write_to_7seg (-1)
 
 camera.release()
-cv2.destroyAllWindows()
+if show_display == True:
+    cv2.destroyAllWindows()
+#
