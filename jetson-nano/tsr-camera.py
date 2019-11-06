@@ -48,6 +48,7 @@ parser.add_argument("--network", type=str, default="googlenet", help="pre-traine
 parser.add_argument("--camera", type=str, default="0", help="index of the MIPI CSI camera to use (e.g. CSI camera 0)\nor for VL42 cameras, the /dev/video device to use.\nby default, MIPI CSI camera 0 will be used.")
 parser.add_argument("--width", type=int, default=1280, help="desired width of camera stream (default is 1280 pixels)")
 parser.add_argument("--height", type=int, default=720, help="desired height of camera stream (default is 720 pixels)")
+parser.add_argument("--display", type=int, default=0, help="render stream to DISPLAY")
 
 try:
 	opt = parser.parse_known_args()[0]
@@ -75,10 +76,29 @@ if ser is not None and ser.isOpen ():
     st = '    '
     ser.write (st.encode ())
 #
+def write_to_7seg (val):
+    if ser is None:
+        return
+    #never access the serial twice for the same value
+    if write_to_7seg._mval == val:
+        return
+    #
+    write_to_7seg._mval = val
+    if val == -1:
+        st = '    '
+    else:
+        st = '{:4d}'.format (val)
+    #
+    ser.write (st.encode ())
+write_to_7seg._mval = -2
+#
 save_video = False
 csi_camera = True   # use CSI/USB camera or gstCamera
 #
 show_display = False
+if opt.display == 1:
+    show_display = True
+
 ESC = 27
 show_fps = True
 #
@@ -92,9 +112,9 @@ cFk = 0       #frame count
 #
 cs_sec = 0
 cs_spd = 0
-#
+# red circle radius
 c_r_min = 5 #5 #10
-c_r_max = 30 #25 #50
+c_r_max = 40 #25 #50
 
 #this is red
 lower_col1 = np.array ([0,  50,  50])
@@ -155,7 +175,7 @@ def do_ai (tsr_img, kTS, kFot, sub_img, dfy, cfy):
         if class_idx >= 0 and confi > 800: # or confidence * 100) > 60:
             # find the object description
             class_desc = imgnet.GetClassDesc (class_idx)
-            #print ("found sign {:d} {:s} on {:d}".format (confi, class_desc, kFot))
+            print ("found sign {:d} {:s} on {:d}".format (confi, class_desc, kFot))
             # save images
             iname = "/mnt/_tsr/raw/{}/img-{}_{}-cuda-c{}.jpg".format (class_desc, kTS, kFot, confi)
             #jetson.utils.saveImageRGBA (iname, cuda_mem, width, height)
@@ -165,7 +185,7 @@ def do_ai (tsr_img, kTS, kFot, sub_img, dfy, cfy):
                 iname = "/mnt/_tsr/raw/{}/img-{}_{}-frame.jpg".format (class_desc, kTS, kFot)
                 #cv2.imwrite (iname, sub_img)
             # overlay the result on the image
-            if confi > 990: # over 99% confidence
+            if confi > 950: # over 99% confidence
                 #print ("found sign {} {:s} fps {}".format (confi, class_desc, net.GetNetworkFPS ()))
                 # update the indicator
                 global cs_spd   
