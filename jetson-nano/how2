@@ -1,0 +1,18 @@
+# * add user access to /dev/ttyUSBx
+# > create /etc/udev/rules.d/60-extra-acl.rules with content:
+# KERNEL=="ttyUSB[0-9]*", MODE="0666"
+# > reload udev: udevadm control --reload-rules && udevadm trigger
+
+# * test video camera
+# v4l2-ctl -d /dev/video0 --set-ctrl=bypass_mode=0 --stream-mmap
+#
+
+#pin 1 of J40 can be used as manually power on/off control
+#1. Short pin 7 & 8 of J40 to disable auto-power-on function
+#2. Then shortly short pin 1 to ground to power on system, or long (~10s) short pin 1 to ground to power off system
+
+# xrandr --fb 1280x720
+#
+# dpkg-query --show nvidia-l4t-core
+# https://docs.nvidia.com/deeplearning/frameworks/install-tf-jetson-platform/index.html
+# https://elinux.org/Jetson_Zoo

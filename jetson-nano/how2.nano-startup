@@ -1,0 +1,55 @@
+#!/bin/bash
+### BEGIN INIT INFO
+# Provides:          nano-startup
+# Should-Start:      console-screen dbus network-manager
+# Required-Start:    $local_fs $remote_fs
+# Required-Stop:     $local_fs $remote_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Default startup script for nano
+# Description:       Default startup script for nano
+### END INIT INFO
+
+#
+# the script needs to go into /etc/init.d/ and chmod 777 /etc/init.d/nano-startup
+# test: /etc/init.d/nano-startup start|stop
+#
+# install: update-rc.d nano-startup defaults
+#
+
+case "$1" in
+  start)
+        # initialize the serial indicator: 4x7digit serial
+        stat /dev/ttyUSB0 > /dev/null
+        RETVAL=$?
+        if [ $RETVAL -eq 0 ]; then
+          stty -F /dev/ttyUSB0 9600
+          echo -ne "v" > /dev/ttyUSB0
+          echo -ne "oooo" > /dev/ttyUSB0
+        fi
+        # set jetson clocks to fast mode
+        jetson_clocks
+        ;;
+  stop)
+        # initialize the serial indicator: 4x7digit serial
+        stat /dev/ttyUSB0 > /dev/null
+        RETVAL=$?
+        if [ $RETVAL -eq 0 ]; then
+          stty -F /dev/ttyUSB0 9600
+          echo -ne "v" > /dev/ttyUSB0
+          echo -ne "----" > /dev/ttyUSB0
+        fi
+        ;;
+  reload|force-reload)
+        ;;
+  restart)
+        $0 stop
+        $0 start
+        ;;
+  status)
+        ;;
+  *)
+        echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload|status}" >&2
+        exit 1
+        ;;
+esac
