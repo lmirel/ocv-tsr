@@ -4,20 +4,7 @@
 #./tsr-camera.py --model=resnet18_e34.onnx --input_blob=input_0 --output_blob=output_0 --labels=labels.txt --video=1 --display=1
 # note: with --video=1, the frame rate drops by approx.10fps
 
-# * add user access to /dev/ttyUSBx
-# > create /etc/udev/rules.d/60-extra-acl.rules with content:
-# KERNEL=="ttyUSB[0-9]*", MODE="0666"
-# > reload udev: udevadm control --reload-rules && udevadm trigger
-
-# * test video camera
-# v4l2-ctl -d /dev/video0 --set-ctrl=bypass_mode=0 --stream-mmap
 #
-
-#pin 1 of J40 can be used as manually power on/off control
-#1. Short pin 7 & 8 of J40 to disable auto-power-on function
-#2. Then shortly short pin 1 to ground to power on system, or long (~10s) short pin 1 to ground to power off system
-#
-
 import jetson.inference
 import jetson.utils
 from jetcam.csi_camera import CSICamera
@@ -144,6 +131,11 @@ def img_subrange (img):
     global c_xx, c_yy, c_rx, c_ry 
     return img.copy()[c_yy - c_ry:c_yy + c_ry, c_xx - c_rx:c_xx + c_rx]
 #
+"""are you using one of the SSD-Mobilenet/Inception models? 
+If so, try changing the class names that you want to ignore to 'void' 
+(without the '') in the labels file (e.g. <jetson-inference>/data/networks/SSD-Mobilenet-v2/ssd_coco_labels.txt). 
+The classes with the name void will then be ignored during detection.
+"""
 def do_detect (cuda_mem, width, height):
     # detect objects in the image (with overlay)
     return detnet.Detect (cuda_mem, width, height, "box,labels,conf")
@@ -156,11 +148,11 @@ def do_ai (tsr_img, kTS, kFot, sub_img, dfy, cfy):
     #iname = "./raw/thd-image-{}_{}.png".format (kTS, kFot)
     tsr_imga = cv2.cvtColor (tsr_img, cv2.COLOR_BGR2RGBA)
     cuda_mem = jetson.utils.cudaFromNumpy (tsr_imga)
-    # print the detections
+    # do object detection
     if dfy == True:
         detections = detnet.Detect (cuda_mem, width, height, "box,labels,conf")
         if len (detections) > 0:
-            #print("detected {:d} objects in image".format(len(detections)))
+            print("detected {:d} objects in image".format(len(detections)))
             iname = "/mnt/_tsr/raw/_objs/img-{}_{}-cuda-o{}.jpg".format (kTS, kFot, 0)
             #jetson.utils.saveImageRGBA (iname, cuda_mem, width, height)
             #for detection in detections:
@@ -169,23 +161,25 @@ def do_ai (tsr_img, kTS, kFot, sub_img, dfy, cfy):
             #net.PrintProfilerTimes()
             #print (cuda_mem)
         #
+    # do classification
     if cfy == True:
         class_idx, confidence = imgnet.Classify (cuda_mem, width, height)
         confi = int (confidence * 1000)
-        if class_idx >= 0 and confi > 800: # or confidence * 100) > 60:
+        if class_idx >= 0:# and confi > 800: # or confidence * 100) > 60:
             # find the object description
             class_desc = imgnet.GetClassDesc (class_idx)
-            print ("found sign {:d} {:s} on {:d}".format (confi, class_desc, kFot))
+            #print ("found sign {:d} {:s} on {:d}".format (confi, class_desc, kFot))
             # save images
             global tsr_fs
-            iname = "/mnt/_tsr/raw/{}/img-{}_{}-ori-c{}.jpg".format (class_desc, kTS, kFot, confi)
-            #cv2.imwrite (iname, tsr_img)
-            tsr_fs.save (tsr_img, iname)
             # save originating frame, for reference
             if sub_img is not None:
                 iname = "/mnt/_tsr/raw/{}/img-{}_{}-frame.jpg".format (class_desc, kTS, kFot)
                 #cv2.imwrite (iname, sub_img)
                 tsr_fs.save (sub_img, iname)
+            # save ROI
+            iname = "/mnt/_tsr/raw/{}/img-{}_{}-ori-c{}.jpg".format (class_desc, kTS, kFot, confi)
+            #cv2.imwrite (iname, tsr_img)
+            tsr_fs.save (tsr_img, iname)
             # overlay the result on the image
             if confi > 980: # over 99% confidence
                 #print ("found sign {} {:s} fps {}".format (confi, class_desc, net.GetNetworkFPS ()))
@@ -344,7 +338,7 @@ while True:
         # on 5watt nvpmodel -m1 && jetson_clocks
         # img_subrange 28fps
         # check_red_circles NO AI 22fps
-        # check_red_circles + classify 14fps
+        # check_red_circles + classify +/- frame save 14fps 
         #
         result = check_red_circles (aimg1, kTS) #img_subrange (aimg1) #check_red_circles (aimg1, kTS) #img_subrange (aimg1) #check_red_circles (aimg1, kTS)
         #
