@@ -77,7 +77,7 @@ class TSRframeSave:
         # indicate that the thread should be stopped
         return len(self.frame_list)
     #
-    def save (self, frm, frmfn):
+    def save (self, frmfn, frm):
         # return the frame most recently read
         self.frame_list.append (frm)
         self.frame_list.append (frmfn)

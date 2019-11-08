@@ -175,11 +175,11 @@ def do_ai (tsr_img, kTS, kFot, sub_img, dfy, cfy):
             if sub_img is not None:
                 iname = "/mnt/_tsr/raw/{}/img-{}_{}-frame.jpg".format (class_desc, kTS, kFot)
                 #cv2.imwrite (iname, sub_img)
-                tsr_fs.save (sub_img, iname)
+                tsr_fs.save (iname, sub_img)
             # save ROI
             iname = "/mnt/_tsr/raw/{}/img-{}_{}-ori-c{}.jpg".format (class_desc, kTS, kFot, confi)
             #cv2.imwrite (iname, tsr_img)
-            tsr_fs.save (tsr_img, iname)
+            tsr_fs.save (iname, tsr_img)
             # overlay the result on the image
             if confi > 980: # over 99% confidence
                 #print ("found sign {} {:s} fps {}".format (confi, class_desc, net.GetNetworkFPS ()))
