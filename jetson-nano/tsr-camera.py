@@ -32,7 +32,7 @@ parser.add_argument("--camera", type=str, default="0", help="index of the MIPI C
 parser.add_argument("--width", type=int, default=1280, help="desired width of camera stream (default is 1280 pixels)")
 parser.add_argument("--height", type=int, default=720, help="desired height of camera stream (default is 720 pixels)")
 parser.add_argument("--display", type=int, default=0, help="render stream to DISPLAY")
-parser.add_argument("--video", type=int, default=0, help="render stream to DISPLAY")
+parser.add_argument("--video", type=int, default=0, help="save stream to /mnt/ storage")
 
 try:
 	opt = parser.parse_known_args()[0]
@@ -42,7 +42,7 @@ except:
 	sys.exit(0)
 #
 try:
-    ser = serial.Serial ('/dev/ttyUSB0', 9600, timeout=1)
+    ser = serial.Serial ('/dev/ttyTHS1', 9600, timeout=1)
 except:
     print("")
     print ('!serial port NOT accessible')
@@ -153,7 +153,7 @@ def do_ai (tsr_img, kTS, kFot, sub_img, dfy, cfy):
         detections = detnet.Detect (cuda_mem, width, height, "box,labels,conf")
         if len (detections) > 0:
             print("detected {:d} objects in image".format(len(detections)))
-            iname = "/mnt/_tsr/raw/_objs/img-{}_{}-cuda-o{}.jpg".format (kTS, kFot, 0)
+            iname = "./raw/_objs/img-{}_{}-cuda-o{}.jpg".format (kTS, kFot, 0)
             #jetson.utils.saveImageRGBA (iname, cuda_mem, width, height)
             #for detection in detections:
             #    print(detection)
@@ -173,11 +173,11 @@ def do_ai (tsr_img, kTS, kFot, sub_img, dfy, cfy):
             global tsr_fs
             # save originating frame, for reference
             if sub_img is not None:
-                iname = "/mnt/_tsr/raw/{}/img-{}_{}-frame.jpg".format (class_desc, kTS, kFot)
+                iname = "./raw/{}/img-{}_{}-frame.jpg".format (class_desc, kTS, kFot)
                 #cv2.imwrite (iname, sub_img)
                 tsr_fs.save (iname, sub_img)
             # save ROI
-            iname = "/mnt/_tsr/raw/{}/img-{}_{}-ori-c{}.jpg".format (class_desc, kTS, kFot, confi)
+            iname = "./raw/{}/img-{}_{}-ori-c{}.jpg".format (class_desc, kTS, kFot, confi)
             #cv2.imwrite (iname, tsr_img)
             tsr_fs.save (iname, tsr_img)
             # overlay the result on the image
@@ -210,7 +210,9 @@ def do_ai (tsr_img, kTS, kFot, sub_img, dfy, cfy):
 def check_red_circles (image, kTS):
     sub_img = img_subrange (image)
     # process subimage
-    blurred = cv2.blur (sub_img, (5, 5))
+    #blurred = cv2.blur (sub_img, (5, 5))
+    blurred = cv2.GaussianBlur (sub_img, (5, 5), 0)
+    #canny = cv2.Canny (blurred, 50, 150)
     hsv = cv2.cvtColor (blurred, cv2.COLOR_BGR2HSV)
     # construct a mask for the color "green", then perform
     # a series of dilations and erosions to remove any small
@@ -260,6 +262,7 @@ def check_red_circles (image, kTS):
     #.if circles is not None:
     #
     #return tsr_img
+    #return canny
     return result
 #
 # camera setup
@@ -287,7 +290,7 @@ else:
 #
 # prep video storing
 if save_video == True:
-    vname = "/mnt/_tsr/raw/video-{}p-{}.avi".format (opt.height, datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
+    vname = "./raw/video-{}p-{}.avi".format (opt.height, datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
     # Define the codec and create VideoWriter object.The output is stored in 'outpy.avi' file.
     #fourcc = cv2.VideoWriter_fourcc(*'XVID')  # cv2.VideoWriter_fourcc() does not exist
     #fourcc = cv2.VideoWriter_fourcc(*'X264')  # cv2.VideoWriter_fourcc() does not exist
@@ -380,6 +383,10 @@ while True:
                     print (cfpst)
         #   
         if show_display == True:
+            #resize result, just in case..
+            result = cv2.resize(result, (int(result.shape[0]/2), int(result.shape[1]/2)), interpolation = cv2.INTER_AREA)
+            #cv2.namedWindow('result', cv2.WND_PROP_FULLSCREEN)
+            #cv2.setWindowProperty('result', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
             cv2.imshow ('result', result)
             #
             key = cv2.waitKey (1)
@@ -390,7 +397,9 @@ while True:
     except KeyboardInterrupt:
         break
 #
-write_to_7seg (-1)
+if ser is not None:
+    st = 'oooo'.format ()
+    ser.write (st.encode ())
 #
 tsr_fs.stop()
 print ("#w:dropping {} frames".format (tsr_fs.count()))

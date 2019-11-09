@@ -1,34 +1,6 @@
 #
 #
-"""root@jetson:/home/jetson# jetson_clocks --show
-SOC family:tegra210  Machine:NVIDIA Jetson Nano Developer Kit
-Online CPUs: 0-1
-CPU Cluster Switching: Disabled
-cpu0: Online=1 Governor=schedutil MinFreq=921600 MaxFreq=921600 CurrentFreq=921600 IdleStates: WFI=1 c7=1 
-cpu1: Online=1 Governor=schedutil MinFreq=921600 MaxFreq=921600 CurrentFreq=921600 IdleStates: WFI=1 c7=1 
-cpu2: Online=0 Governor=schedutil MinFreq=921600 MaxFreq=921600 CurrentFreq=921600 IdleStates: WFI=1 c7=1 
-cpu3: Online=0 Governor=schedutil MinFreq=921600 MaxFreq=921600 CurrentFreq=921600 IdleStates: WFI=1 c7=1 
-GPU MinFreq=76800000 MaxFreq=614400000 CurrentFreq=460800000
-EMC MinFreq=204000000 MaxFreq=1600000000 CurrentFreq=1600000000 FreqOverride=0
-Fan: speed=0
-NV Power Mode: 5W
-root@jetson:/home/jetson# jetson_clocks 
-root@jetson:/home/jetson# jetson_clocks --show
-SOC family:tegra210  Machine:NVIDIA Jetson Nano Developer Kit
-Online CPUs: 0-1
-CPU Cluster Switching: Disabled
-cpu0: Online=1 Governor=schedutil MinFreq=921600 MaxFreq=921600 CurrentFreq=921600 IdleStates: WFI=0 c7=0 
-cpu1: Online=1 Governor=schedutil MinFreq=921600 MaxFreq=921600 CurrentFreq=921600 IdleStates: WFI=0 c7=0 
-cpu2: Online=0 Governor=schedutil MinFreq=921600 MaxFreq=921600 CurrentFreq=921600 IdleStates: WFI=0 c7=0 
-cpu3: Online=0 Governor=schedutil MinFreq=921600 MaxFreq=921600 CurrentFreq=921600 IdleStates: WFI=0 c7=0 
-GPU MinFreq=614400000 MaxFreq=614400000 CurrentFreq=614400000
-EMC MinFreq=204000000 MaxFreq=1600000000 CurrentFreq=1600000000 FreqOverride=1
-Fan: speed=255
-NV Power Mode: 5W
---
-76800000 vs
-614400000
-"""
+
 # import the necessary packages
 
 from threading import Thread
